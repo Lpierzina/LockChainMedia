@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -89,8 +89,16 @@
             padding-left: 20px;
         }
 
+        .spiral-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px; /* Space between spiral and color mapping */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            margin-top: 20px;
+        }
+
         .nft-container {
-            display: inline-block;
             position: relative;
             width: 500px;
             height: 500px;
@@ -98,13 +106,39 @@
             border: 2px solid var(--lockchain-blue);
             border-radius: 50%;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            margin-top: 20px;
             overflow: hidden; /* Ensure spiral stays within the circle */
         }
 
         .nft-container svg {
             width: 100%;
             height: 100%;
+        }
+
+        .color-mapping {
+            max-width: 300px;
+            /* Optional: Add a border or background for better visibility */
+        }
+
+        .color-mapping h3 {
+            color: var(--lockchain-blue);
+            margin-bottom: 10px;
+        }
+
+        .color-mapping ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .color-mapping li {
+            margin-bottom: 5px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+        }
+
+        .color-mapping li span {
+            margin-right: 8px;
+            font-size: 18px; /* Adjust icon size if needed */
         }
 
         footer {
@@ -138,6 +172,10 @@
 
             .intro-section p {
                 font-size: 16px;
+            }
+
+            .color-mapping {
+                max-width: 100%;
             }
         }
 
@@ -184,27 +222,6 @@
             margin: 20px 0;
             word-break: break-all;
             color: var(--lockchain-blue);
-            font-size: 16px;
-        }
-
-        /* Color Code Mapping */
-        #colorCode {
-            margin-top: 20px;
-            text-align: left;
-        }
-
-        #colorCode h3 {
-            color: var(--lockchain-blue);
-            margin-bottom: 10px;
-        }
-
-        #colorCode ul {
-            list-style-type: none;
-            padding-left: 0;
-        }
-
-        #colorCode li {
-            margin-bottom: 5px;
             font-size: 16px;
         }
 
@@ -320,34 +337,39 @@
             <p>
                 This process ensures that your media's ownership is verifiable and immutable on the blockchain, providing you with peace of mind and security.
             </p>
-            <h3>Color Mapping</h3>
-            <p>
-                Each color in the fingerprint spiral represents a specific hexadecimal character (0-9, a-f) from your media's hash. Here's how each color maps to a character:
-            </p>
-            <ul>
-                <li><span style="color: #FF0000;">🔴 Red</span> : 0</li>
-                <li><span style="color: #FFA500;">🟠 Orange</span> : 1</li>
-                <li><span style="color: #FFFF00;">🟡 Yellow</span> : 2</li>
-                <li><span style="color: #008000;">🟢 Green</span> : 3</li>
-                <li><span style="color: #0000FF;">🔵 Blue</span> : 4</li>
-                <li><span style="color: #4B0082;">🟣 Indigo</span> : 5</li>
-                <li><span style="color: #EE82EE;">🟣 Violet</span> : 6</li>
-                <li><span style="color: #A52A2A;">🟤 Brown</span> : 7</li>
-                <li><span style="color: #808080;">⚫ Gray</span> : 8</li>
-                <li><span style="color: #000000;">⚫ Black</span> : 9</li>
-                <li><span style="color: #00FFFF;">🟡 Aqua</span> : a</li>
-                <li><span style="color: #FF00FF;">🟣 Fuchsia</span> : b</li>
-                <li><span style="color: #800000;">🟤 Maroon</span> : c</li>
-                <li><span style="color: #808000;">🟤 Olive</span> : d</li>
-                <li><span style="color: #008080;">🟢 Teal</span> : e</li>
-                <li><span style="color: #000080;">🔵 Navy</span> : f</li>
-            </ul>
+            <!-- Removed the duplicate Color Mapping list from here -->
         </div>
 
-        <!-- Spiral Visualization -->
-        <div class="nft-container">
-            <!-- SVG Spiral will be injected here by JavaScript -->
-            <svg id="spiral-svg" width="500" height="500"></svg>
+        <!-- Spiral and Color Mapping Wrapper -->
+        <div class="spiral-wrapper">
+            <!-- Spiral Visualization -->
+            <div class="nft-container">
+                <!-- SVG Spiral will be injected here by JavaScript -->
+                <svg id="spiral-svg" width="500" height="500"></svg>
+            </div>
+
+            <!-- Color Code Mapping (Adjacent to Spiral) -->
+            <div class="color-mapping" id="colorCode" style="display: none;">
+                <h3>Color Mapping</h3>
+                <ul>
+                    <li><span style="color: #FF0000;">🔴 Red</span> : 0</li>
+                    <li><span style="color: #FFA500;">🟠 Orange</span> : 1</li>
+                    <li><span style="color: #FFFF00;">🟡 Yellow</span> : 2</li>
+                    <li><span style="color: #008000;">🟢 Green</span> : 3</li>
+                    <li><span style="color: #0000FF;">🔵 Blue</span> : 4</li>
+                    <li><span style="color: #4B0082;">🟣 Indigo</span> : 5</li>
+                    <li><span style="color: #EE82EE;">🟣 Violet</span> : 6</li>
+                    <li><span style="color: #A52A2A;">🟤 Brown</span> : 7</li>
+                    <li><span style="color: #808080;">⚫ Gray</span> : 8</li>
+                    <li><span style="color: #000000;">⚫ Black</span> : 9</li>
+                    <li><span style="color: #00FFFF;">🟡 Aqua</span> : a</li>
+                    <li><span style="color: #FF00FF;">🟣 Fuchsia</span> : b</li>
+                    <li><span style="color: #800000;">🟤 Maroon</span> : c</li>
+                    <li><span style="color: #808000;">🟤 Olive</span> : d</li>
+                    <li><span style="color: #008080;">🟢 Teal</span> : e</li>
+                    <li><span style="color: #000080;">🔵 Navy</span> : f</li>
+                </ul>
+            </div>
         </div>
 
         <!-- Connect MetaMask and Coinbase Wallet -->
@@ -364,29 +386,6 @@
         <button class="btn" onclick="hashDocument()">Hash Document</button>
 
         <p id="hashOutput"></p>
-
-        <!-- Color Code Mapping (Revealed After Hashing) -->
-        <div id="colorCode" style="display: none; margin-top: 20px;">
-            <h3>Color Code Mapping</h3>
-            <ul style="list-style-type: none; padding-left: 0;">
-                <li><span style="color: #FF0000;">🔴 Red</span> : 0</li>
-                <li><span style="color: #FFA500;">🟠 Orange</span> : 1</li>
-                <li><span style="color: #FFFF00;">🟡 Yellow</span> : 2</li>
-                <li><span style="color: #008000;">🟢 Green</span> : 3</li>
-                <li><span style="color: #0000FF;">🔵 Blue</span> : 4</li>
-                <li><span style="color: #4B0082;">🟣 Indigo</span> : 5</li>
-                <li><span style="color: #EE82EE;">🟣 Violet</span> : 6</li>
-                <li><span style="color: #A52A2A;">🟤 Brown</span> : 7</li>
-                <li><span style="color: #808080;">⚫ Gray</span> : 8</li>
-                <li><span style="color: #000000;">⚫ Black</span> : 9</li>
-                <li><span style="color: #00FFFF;">🟡 Aqua</span> : a</li>
-                <li><span style="color: #FF00FF;">🟣 Fuchsia</span> : b</li>
-                <li><span style="color: #800000;">🟤 Maroon</span> : c</li>
-                <li><span style="color: #808000;">🟤 Olive</span> : d</li>
-                <li><span style="color: #008080;">🟢 Teal</span> : e</li>
-                <li><span style="color: #000080;">🔵 Navy</span> : f</li>
-            </ul>
-        </div>
 
         <button class="btn" id="registerButton" onclick="registerHashOnBlockchain()" disabled>
             Register Hash on Blockchain (Fee: <span id="buttonFee">0.01 ETH</span>)
@@ -418,6 +417,7 @@
         let account;
         let hashHex;
         let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
+        
         
          // Contract ABI (Replace with your actual complete ABI)
         const contractABI = [
