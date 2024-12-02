@@ -25,6 +25,41 @@
             font-family: 'Roboto', sans-serif;
             background-color: var(--lockchain-gray);
             color: var(--text-color);
+            position: relative; /* To position the fingerprint background correctly */
+            overflow-x: hidden; /* Prevent horizontal scroll caused by absolute positioning */
+        }
+
+        /* Fingerprint Background */
+        .fingerprint-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allow clicks to pass through */
+            z-index: -1; /* Place behind all other content */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.1; /* Adjust opacity as needed */
+        }
+
+        .fingerprint-background svg {
+            width: 80%;
+            height: auto;
+            stroke: var(--lockchain-blue);
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 1000; /* Placeholder, will be updated dynamically */
+            stroke-dashoffset: 1000; /* Start with dash offset equal to dash array */
+            animation: trace 10s linear forwards; /* Adjust duration as needed */
+        }
+
+        /* Animation for Tracing the Fingerprint */
+        @keyframes trace {
+            to {
+                stroke-dashoffset: 0;
+            }
         }
 
         header {
@@ -34,6 +69,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: relative;
+            z-index: 1; /* Ensure header stays above fingerprint */
         }
 
         header .logo {
@@ -55,6 +92,8 @@
         main {
             padding: 40px;
             text-align: center;
+            position: relative;
+            z-index: 1; /* Ensure main content stays above fingerprint */
         }
 
         .intro-section {
@@ -89,13 +128,13 @@
             padding-left: 20px;
         }
 
-        .spiral-wrapper {
+        /* New Flex Container for Spiral and Color Mapping */
+        .spiral-and-color {
             display: flex;
             justify-content: center;
-            align-items: center;
-            gap: 20px; /* Space between spiral and color mapping */
-            flex-wrap: wrap; /* Allow wrapping on smaller screens */
-            margin-top: 20px;
+            align-items: flex-start;
+            margin-top: 30px;
+            flex-wrap: wrap; /* Allows wrapping on smaller screens */
         }
 
         .nft-container {
@@ -107,6 +146,7 @@
             border-radius: 50%;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             overflow: hidden; /* Ensure spiral stays within the circle */
+            margin: 10px;
         }
 
         .nft-container svg {
@@ -114,31 +154,27 @@
             height: 100%;
         }
 
-        .color-mapping {
-            max-width: 300px;
-            /* Optional: Add a border or background for better visibility */
+        /* Style for Dynamic Color Mapping */
+        #colorCode {
+            margin-left: 20px;
+            max-width: 250px;
+            color: var(--text-color);
+            display: none; /* Hidden by default */
         }
 
-        .color-mapping h3 {
+        #colorCode h3 {
             color: var(--lockchain-blue);
             margin-bottom: 10px;
         }
 
-        .color-mapping ul {
+        #colorCode ul {
             list-style-type: none;
             padding-left: 0;
         }
 
-        .color-mapping li {
+        #colorCode li {
             margin-bottom: 5px;
             font-size: 16px;
-            display: flex;
-            align-items: center;
-        }
-
-        .color-mapping li span {
-            margin-right: 8px;
-            font-size: 18px; /* Adjust icon size if needed */
         }
 
         footer {
@@ -149,33 +185,20 @@
             position: fixed;
             width: 100%;
             bottom: 0;
+            z-index: 1; /* Ensure footer stays above fingerprint */
         }
 
         /* Responsive Design */
-        @media (max-width: 600px) {
-            .nft-container {
-                width: 300px;
-                height: 300px;
-            }
-
-            header, footer {
+        @media (max-width: 800px) {
+            .spiral-and-color {
                 flex-direction: column;
+                align-items: center;
             }
 
-            nav a {
-                margin: 10px 0 0 0;
-            }
-
-            .intro-section {
-                padding: 20px;
-            }
-
-            .intro-section p {
-                font-size: 16px;
-            }
-
-            .color-mapping {
-                max-width: 100%;
+            #colorCode {
+                margin-left: 0;
+                margin-top: 20px;
+                max-width: 80%;
             }
         }
 
@@ -303,6 +326,23 @@
 </head>
 <body>
 
+    <!-- Fingerprint Background -->
+    <div class="fingerprint-background">
+        <!-- Simple Fingerprint SVG -->
+        <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+            <!-- Example Fingerprint Path -->
+            <path id="fingerprint-path" d="
+                M300,50 
+                C350,100 350,200 300,250 
+                C250,300 150,300 100,250 
+                C50,200 50,100 100,50 
+                C150,0 250,0 300,50 
+                Z
+            "/>
+            <!-- You can replace the above path with a more detailed fingerprint SVG path -->
+        </svg>
+    </div>
+
     <!-- Header Section -->
     <header>
         <div class="logo">LockChain's MediaSecureNFT</div>
@@ -337,20 +377,39 @@
             <p>
                 This process ensures that your media's ownership is verifiable and immutable on the blockchain, providing you with peace of mind and security.
             </p>
-            <!-- Removed the duplicate Color Mapping list from here -->
+            <h3>Color Mapping</h3>
+            <p>
+                Each color in the fingerprint spiral represents a specific hexadecimal character (0-9, a-f) from your media's hash. Here's how each color maps to a character:
+            </p>
+            <ul>
+                <li><span style="color: #FF0000;">🔴 Red</span> : 0</li>
+                <li><span style="color: #FFA500;">🟠 Orange</span> : 1</li>
+                <li><span style="color: #FFFF00;">🟡 Yellow</span> : 2</li>
+                <li><span style="color: #008000;">🟢 Green</span> : 3</li>
+                <li><span style="color: #0000FF;">🔵 Blue</span> : 4</li>
+                <li><span style="color: #4B0082;">🟣 Indigo</span> : 5</li>
+                <li><span style="color: #EE82EE;">🟣 Violet</span> : 6</li>
+                <li><span style="color: #A52A2A;">🟤 Brown</span> : 7</li>
+                <li><span style="color: #808080;">⚫ Gray</span> : 8</li>
+                <li><span style="color: #000000;">⚫ Black</span> : 9</li>
+                <li><span style="color: #00FFFF;">🟡 Aqua</span> : a</li>
+                <li><span style="color: #FF00FF;">🟣 Fuchsia</span> : b</li>
+                <li><span style="color: #800000;">🟤 Maroon</span> : c</li>
+                <li><span style="color: #808000;">🟤 Olive</span> : d</li>
+                <li><span style="color: #008080;">🟢 Teal</span> : e</li>
+                <li><span style="color: #000080;">🔵 Navy</span> : f</li>
+            </ul>
         </div>
 
-        <!-- Spiral and Color Mapping Wrapper -->
-        <div class="spiral-wrapper">
-            <!-- Spiral Visualization -->
+        <!-- Spiral Visualization and Dynamic Color Mapping -->
+        <div class="spiral-and-color">
             <div class="nft-container">
                 <!-- SVG Spiral will be injected here by JavaScript -->
                 <svg id="spiral-svg" width="500" height="500"></svg>
             </div>
-
-            <!-- Color Code Mapping (Adjacent to Spiral) -->
-            <div class="color-mapping" id="colorCode" style="display: none;">
-                <h3>Color Mapping</h3>
+            <!-- Color Code Mapping (Revealed After Hashing) -->
+            <div id="colorCode">
+                <h3>Color Code Mapping</h3>
                 <ul>
                     <li><span style="color: #FF0000;">🔴 Red</span> : 0</li>
                     <li><span style="color: #FFA500;">🟠 Orange</span> : 1</li>
@@ -417,6 +476,7 @@
         let account;
         let hashHex;
         let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
+        
         
         
          // Contract ABI (Replace with your actual complete ABI)
