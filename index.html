@@ -305,6 +305,15 @@
             color: #555;
             margin-top: 5px;
         }
+
+        /* Image Preview Styling */
+        #imagePreview {
+            margin-top: 20px;
+            max-width: 100%;
+            max-height: 300px;
+            border: 2px solid var(--lockchain-blue);
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -416,6 +425,9 @@
         <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf" /><br>
         <button class="btn" onclick="hashDocument()">Hash Document</button>
 
+        <!-- Image Preview -->
+        <img id="imagePreview" src="#" alt="Image Preview" style="display: none;"/>
+
         <p id="hashOutput"></p>
 
         <button class="btn" id="registerButton" onclick="registerHashOnBlockchain()" disabled>
@@ -448,6 +460,7 @@
         let account;
         let hashHex;
         let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
+        
       
         
         
@@ -1036,9 +1049,9 @@
         // Contract address (Replace with your deployed contract address)
         const contractAddress = '0xc6040a3647441EeFf8086Dcc4239c293dde23B45';
 
-             // Initialize Coinbase Wallet SDK
-        const CoinbaseWallet = window.CoinbaseWalletSDK.default;
-        const coinbaseWallet = new CoinbaseWallet({
+  // Initialize Coinbase Wallet SDK
+        const CoinbaseWalletSDK = window.CoinbaseWalletSDK.default;
+        const coinbaseWallet = new CoinbaseWalletSDK({
             appName: "MediaSecureNFT",
             appLogoUrl: "https://your-logo-url.com/logo.png", // Optional: Replace with your app logo URL
             darkMode: false, // Optional: true for dark theme
@@ -1166,6 +1179,8 @@
                 document.getElementById('colorCode').style.display = 'none';
                 // Clear spiral visualization
                 document.getElementById('spiral-svg').innerHTML = '';
+                // Hide image preview
+                document.getElementById('imagePreview').style.display = 'none';
 
                 alert('Wallet has been disconnected.');
             } catch (error) {
@@ -1204,6 +1219,20 @@
             }
 
             try {
+                // Display image preview if the file is an image
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.getElementById('imagePreview');
+                        img.src = e.target.result;
+                        img.style.display = 'block';
+                    }
+                    reader.readAsDataURL(file);
+                } else {
+                    // Hide image preview for non-image files
+                    document.getElementById('imagePreview').style.display = 'none';
+                }
+
                 const arrayBuffer = await file.arrayBuffer();
                 const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -1254,6 +1283,9 @@
 
                 console.log('Transaction receipt:', receipt);
                 generateReceipt(mediaHash, account, receipt);
+
+                // After successful transaction, generate SVG and upload to Pinata
+                await generateAndUploadSVG();
             } catch (error) {
                 console.error('Error registering hash on blockchain:', error);
                 alert('Error registering hash on blockchain. See console for details.');
@@ -1261,36 +1293,6 @@
                 // Hide the loading overlay
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
-        }
-
-        // Function to generate and display the transaction receipt
-        function generateReceipt(mediaHash, account, receipt) {
-            let tokenId = null;
-
-            // Iterate through the logs to find the Transfer event
-            if (receipt.events && receipt.events.Transfer && receipt.events.Transfer.returnValues) {
-                tokenId = receipt.events.Transfer.returnValues.tokenId;
-            }
-
-            if (!tokenId) {
-                // If Transfer event is not found in receipt, alert the user
-                alert('Transaction successful, but could not retrieve Token ID.');
-                return;
-            }
-
-            // Construct the Etherscan link for the NFT
-            const etherscanLink = `https://sepolia.etherscan.io/token/${contractAddress}?a=${tokenId}`;
-
-            const timestamp = new Date().toLocaleString();
-            const receiptContent = `
-                <strong>Document Hash:</strong> ${mediaHash}<br>
-                <strong>Registered By:</strong> ${account}<br>
-                <strong>Date and Time:</strong> ${timestamp}<br>
-                <strong>Token ID:</strong> ${tokenId}<br>
-                <strong>View Your NFT:</strong> <a href="${etherscanLink}" target="_blank">Etherscan Link</a>
-            `;
-            document.getElementById('receiptContent').innerHTML = receiptContent;
-            document.getElementById('receipt').style.display = 'block';
         }
 
         // Function to generate the spiral visualization based on the hash
@@ -1337,7 +1339,7 @@
 
                 // Invert theta to change spiral direction to clockwise
                 const theta = -i * angleIncrement;
-                const r = a * Math.exp(b * Math.abs(theta)); // Use absolute value to ensure r is positive
+                const r = a * Math.exp(b * Math.abs(theta)); // Use exponential to create tighter spirals
 
                 // Convert polar to cartesian coordinates
                 let x = centerX + r * Math.cos(theta);
@@ -1366,20 +1368,19 @@
                 svg.appendChild(circle);
             }
 
-            // Draw curved connecting lines between points to mimic fingerprint ridges
+            // Draw curved connecting lines between points to mimic spiral ridges
             for (let i = 0; i < points.length - 1; i++) {
                 const start = points[i];
                 const end = points[i + 1];
 
                 // Calculate control points for Bezier curves
-                // Adjusting control points to enhance clockwise curvature
                 const controlPoint1 = {
-                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to the right
-                    y: start.y - 20 // Adjust for curvature
+                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to enhance curvature
+                    y: start.y - 20
                 };
                 const controlPoint2 = {
-                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to the right
-                    y: end.y - 20 // Adjust for curvature
+                    x: start.x + (end.x - start.x) / 2 + 10,
+                    y: end.y - 20
                 };
 
                 // Create a path for the Bezier curve
@@ -1473,11 +1474,199 @@
             });
         }
 
-        // Optional: Generate a default spiral on page load (if desired)
-        window.onload = function() {
-            // You can set a default hash here if desired
-            // generateSpiral('c17174716f9994d96b20cd21c8b4cde5c137f3a108f493c5e411c0c5a72ad86b');
-        };
+        // Function to generate and display the transaction receipt
+        function generateReceipt(mediaHash, account, receipt) {
+            let tokenId = null;
+
+            // Iterate through the logs to find the Transfer event
+            if (receipt.events && receipt.events.Transfer && receipt.events.Transfer.returnValues) {
+                tokenId = receipt.events.Transfer.returnValues.tokenId;
+            }
+
+            if (!tokenId) {
+                // If Transfer event is not found in receipt, alert the user
+                alert('Transaction successful, but could not retrieve Token ID.');
+                return;
+            }
+
+            // Construct the Etherscan link for the NFT
+            const etherscanLink = `https://sepolia.etherscan.io/token/${contractAddress}?a=${tokenId}`;
+
+            const timestamp = new Date().toLocaleString();
+            const receiptContent = `
+                <strong>Document Hash:</strong> ${mediaHash}<br>
+                <strong>Registered By:</strong> ${account}<br>
+                <strong>Date and Time:</strong> ${timestamp}<br>
+                <strong>Token ID:</strong> ${tokenId}<br>
+                <strong>View Your NFT:</strong> <a href="${etherscanLink}" target="_blank">Etherscan Link</a>
+            `;
+            document.getElementById('receiptContent').innerHTML = receiptContent;
+            document.getElementById('receipt').style.display = 'block';
+        }
+
+        // Function to generate the spiral visualization based on the hash
+        function generateSpiral(hash) {
+            const svg = document.getElementById('spiral-svg');
+            svg.innerHTML = ''; // Clear previous spiral
+            const xmlns = "http://www.w3.org/2000/svg";
+            const centerX = svg.clientWidth / 2; // SVG center X
+            const centerY = svg.clientHeight / 2; // SVG center Y
+
+            // Spiral parameters adjusted to keep spiral within the circle
+            const a = 4.5; // Controls the distance between loops
+            const b = 0.12; // Controls the tightness of the spiral
+            const numPoints = hash.length;
+            const angleIncrement = 0.5; // Radians between points
+
+            // Color mapping for hexadecimal characters (0-9, a-f)
+            const digitColors = {
+                '0': '#FF0000', // Red
+                '1': '#FFA500', // Orange
+                '2': '#FFFF00', // Yellow
+                '3': '#008000', // Green
+                '4': '#0000FF', // Blue
+                '5': '#4B0082', // Indigo
+                '6': '#EE82EE', // Violet
+                '7': '#A52A2A', // Brown
+                '8': '#808080', // Gray
+                '9': '#000000', // Black
+                'a': '#00FFFF', // Aqua
+                'b': '#FF00FF', // Fuchsia
+                'c': '#800000', // Maroon
+                'd': '#808000', // Olive
+                'e': '#008080', // Teal
+                'f': '#000080'  // Navy
+            };
+
+            // Arrays to store points for connecting lines
+            const points = [];
+
+            // Iterate over each character in the hash
+            for (let i = 0; i < numPoints; i++) {
+                const char = hash[i].toLowerCase(); // Ensure lowercase for a-f
+                if (!digitColors[char]) continue; // Skip if not a valid hex character
+
+                // Invert theta to change spiral direction to clockwise
+                const theta = -i * angleIncrement;
+                const r = a * Math.exp(b * Math.abs(theta)); // Use exponential to create tighter spirals
+
+                // Convert polar to cartesian coordinates
+                let x = centerX + r * Math.cos(theta);
+                let y = centerY + r * Math.sin(theta);
+
+                // Ensure the point stays within the circle
+                const maxRadius = (svg.clientWidth / 2) - 20; // 20px padding
+                const currentRadius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                if (currentRadius > maxRadius) {
+                    // Scale down the point proportionally
+                    const scale = maxRadius / currentRadius;
+                    x = centerX + (x - centerX) * scale;
+                    y = centerY + (y - centerY) * scale;
+                }
+
+                // Store the point for connecting lines
+                points.push({ x, y });
+
+                // Create a larger circle for each hex character (increased radius from 5 to 8)
+                const circle = document.createElementNS(xmlns, "circle");
+                circle.setAttribute("cx", x);
+                circle.setAttribute("cy", y);
+                circle.setAttribute("r", 8); // Increased radius
+                circle.setAttribute("fill", digitColors[char]);
+
+                svg.appendChild(circle);
+            }
+
+            // Draw curved connecting lines between points to mimic spiral ridges
+            for (let i = 0; i < points.length - 1; i++) {
+                const start = points[i];
+                const end = points[i + 1];
+
+                // Calculate control points for Bezier curves
+                const controlPoint1 = {
+                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to enhance curvature
+                    y: start.y - 20
+                };
+                const controlPoint2 = {
+                    x: start.x + (end.x - start.x) / 2 + 10,
+                    y: end.y - 20
+                };
+
+                // Create a path for the Bezier curve
+                const path = document.createElementNS(xmlns, "path");
+                const d = `M ${start.x} ${start.y} C ${controlPoint1.x} ${controlPoint1.y}, ${controlPoint2.x} ${controlPoint2.y}, ${end.x} ${end.y}`;
+                path.setAttribute("d", d);
+                path.setAttribute("stroke", digitColors[hash[i + 1].toLowerCase()] || '#000000');
+                path.setAttribute("stroke-width", "2");
+                path.setAttribute("fill", "none");
+                path.setAttribute("opacity", "0.6");
+
+                svg.appendChild(path);
+            }
+        }
+
+        // Function to generate and upload SVG to Pinata.cloud
+        async function generateAndUploadSVG() {
+            // Get the uploaded image (if any)
+            const imagePreview = document.getElementById('imagePreview');
+            const imageSrc = imagePreview.src;
+
+            // Get the spiral SVG content
+            const spiralSVG = document.getElementById('spiral-svg').outerHTML;
+
+            // Create a new SVG that includes the background image and the spiral
+            const combinedSVG = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
+                    <image href="${imageSrc}" x="0" y="0" width="500" height="500" opacity="0.2"/>
+                    ${spiralSVG}
+                </svg>
+            `;
+
+            // Convert the combined SVG string to a Blob
+            const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
+            const svgFile = new File([svgBlob], 'spiral_visualization.svg');
+
+            // Upload the SVG file to Pinata.cloud via your backend
+            try {
+                const response = await fetch('/upload-to-pinata', { // Replace with your backend endpoint
+                    method: 'POST',
+                    body: createFormData(svgFile)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Uploaded to Pinata:', data);
+                alert('SVG successfully uploaded to IPFS via Pinata!');
+            } catch (error) {
+                console.error('Error uploading SVG to Pinata:', error);
+                alert('Failed to upload SVG to Pinata. See console for details.');
+            }
+        }
+
+        // Helper function to create FormData for file upload
+        function createFormData(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            return formData;
+        }
+
+        // Function to handle file upload to Pinata.cloud
+        // This function should be implemented on your backend server
+        // For security reasons, API keys should not be exposed on the frontend
+        // Below is an example using Fetch API to send the file to your backend
+
+        /*
+            Backend Endpoint (/upload-to-pinata):
+            - Receives the file via POST request
+            - Uses Pinata's API to upload the file
+            - Returns the IPFS hash or URL to the frontend
+        */
+
+        // Note: Implement the backend separately as detailed in the Backend Implementation section
+
     </script>
 
 </body>
