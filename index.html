@@ -14,10 +14,6 @@
     <script src="https://unpkg.com/@coinbase/wallet-sdk@3.7.0/dist/coinbase-wallet-sdk.umd.min.js"></script>
     <!-- Include Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-
-    
     <style>
         /* LockChain Theme Colors */
         :root {
@@ -309,7 +305,7 @@
     <main>
         <!-- Introduction Section -->
         <div class="intro-section">
-            <h2>Welcome, welcome to LockChain's Media Secure Platform</h2>
+            <h2>Welcome to LockChain's Media Secure Platform</h2>
             <p>
                 In today's digital age, securing your valuable media files is paramount. LockChain's Media Secure website leverages the power of blockchain technology to provide you with an immutable proof of ownership for your digital assets. By hashing your media files and issuing a unique NFT with a color-matching fingerprint, we ensure that your digital content remains authentic and tamper-proof.
             </p>
@@ -1138,21 +1134,20 @@
       // Contract address (Replace with your deployed contract address)
         const contractAddress = '0x26E5D85e4E8f381558cDccAb4BDae80bd4a9cEB1';
 
-            // Initialize Web3Modal
+        // Initialize Web3Modal
         const providerOptions = {
             walletconnect: {
                 package: window.WalletConnectProvider.default,
                 options: {
-                    rpc: {
-                        11155111: "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU" // Sepolia via Alchemy
-                    }
+                    infuraId: "DlloOg9phVabjuMziEUxAdV1a2veqPNU" // Replace with your Infura ID
                 }
             },
             coinbasewallet: {
                 package: window.CoinbaseWalletSDK.default, // Required
                 options: {
                     appName: "MediaSecureNFT", // Required
-                    rpc: "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU", // Sepolia via Alchemy
+                    infuraId: "DlloOg9phVabjuMziEUxAdV1a2veqPNU", // Required
+                    rpc: "", // Optional if infuraId is provided
                     chainId: 11155111, // Sepolia Test Network ID
                     darkMode: false // Optional. Use dark theme?
                 }
@@ -1160,36 +1155,56 @@
         };
 
         const web3Modal = new window.Web3Modal.default({
-            cacheProvider: false, // Prevents automatic reconnections
-            providerOptions, // Required
+            cacheProvider: false, // optional
+            providerOptions, // required
         });
 
-       
+        // Function to connect wallet using Web3Modal
+        async function connectWallet() {
+            try {
+                provider = await web3Modal.connect();
+                web3 = new Web3(provider);
+                const accounts = await web3.eth.getAccounts();
+                account = accounts[0];
+                document.getElementById('walletAddress').innerText = 'Connected: ' + account;
+                contract = new web3.eth.Contract(contractABI, contractAddress);
+                console.log('Connected account:', account);
 
-        // Add event listener to the Connect Wallet button
-        document.getElementById('connectButton').addEventListener('click', connectWallet);
+                // Enable Disconnect Button
+                document.getElementById('disconnectButton').disabled = false;
+                document.getElementById('connectButton').disabled = true;
 
-     // Function to connect wallet using Web3Modal
-       async function connectWallet() {
-    if (window.ethereum) {
-        try {
-            console.log('Requesting account access...');
-            // Request account access if needed
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
-            web3 = new Web3(window.ethereum);
-            const accounts = await web3.eth.getAccounts();
-            account = accounts[0];
-            document.getElementById('walletAddress').innerText = 'Connected: ' + account;
-            contract = new web3.eth.Contract(contractABI, contractAddress);
-            console.log('Connected account:', account);
-        } catch (error) {
-            console.error('Error connecting to MetaMask:', error);
-            alert('Error connecting to MetaMask.');
+                // Fetch and display the current fee
+                await displayCurrentFee();
+
+                // Listen for accountsChanged
+                provider.on("accountsChanged", (accounts) => {
+                    if (accounts.length === 0) {
+                        // MetaMask is locked or the user has not connected any accounts
+                        disconnectWallet();
+                    } else {
+                        account = accounts[0];
+                        document.getElementById('walletAddress').innerText = 'Connected: ' + account;
+                    }
+                });
+
+                // Listen for chainChanged
+                provider.on("chainChanged", (chainId) => {
+                    // Reload the page to switch to the new network
+                    window.location.reload();
+                });
+
+                // Listen for disconnect
+                provider.on("disconnect", (code, reason) => {
+                    console.log(code, reason);
+                    disconnectWallet();
+                });
+
+            } catch (error) {
+                console.error('Could not connect to wallet:', error);
+                alert('Could not connect to wallet. Please try again.');
+            }
         }
-    } else {
-        alert('Please install MetaMask!');
-    }
-}
 
         // Function to disconnect wallet
         function disconnectWallet() {
@@ -1258,29 +1273,6 @@
             }
         }
 
-        // Function to upload metadata to IPFS via backend server
-        async function uploadMetadataToIPFS(metadataBlob) {
-            const formData = new FormData();
-            formData.append('file', metadataBlob, `metadata_${Date.now()}.json`);
-
-            try {
-                const response = await fetch('http://localhost:3000/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to upload metadata to IPFS.');
-                }
-
-                const data = await response.json();
-                return data.IpfsHash;
-            } catch (error) {
-                console.error('Error uploading metadata to IPFS:', error);
-                throw error;
-            }
-        }
-
         // Function to register the hashed document on the blockchain
         async function registerHashOnBlockchain() {
             if (!web3 || !account) {
@@ -1295,19 +1287,6 @@
 
             const mediaHash = hashHex;
 
-            // Generate the spiral SVG Data URI
-            const svgDataURI = generateSpiral(mediaHash.slice(2)); // Remove '0x' prefix
-
-            // Create the JSON metadata
-            const metadata = {
-                name: `MediaSecureNFT #${Date.now()}`, // Unique name, e.g., based on timestamp
-                description: "An NFT representing a secure media file with a unique spiral fingerprint.",
-                image: svgDataURI // Embed the spiral SVG directly
-            };
-
-            // Convert metadata to Blob
-            const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
-
             try {
                 // Fetch the current fee from the contract
                 const feeInWei = await contract.methods.MINT_FEE().call();
@@ -1316,17 +1295,8 @@
                 // Show the loading overlay
                 document.getElementById('loadingOverlay').style.display = 'flex';
 
-                // Upload the metadata JSON to your backend server
-                const ipfsHash = await uploadMetadataToIPFS(metadataBlob);
-
-                if (!ipfsHash) {
-                    throw new Error('Failed to upload metadata to IPFS.');
-                }
-
-                const tokenURI = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
-
-                // Send the transaction to mintNFT with tokenURI
-                const receipt = await contract.methods.mintNFT(mediaHash, tokenURI).send({
+                // Send the transaction to mintNFT
+                const receipt = await contract.methods.mintNFT(mediaHash).send({
                     from: account,
                     value: feeInWei, // Use the dynamic fee
                 });
@@ -1347,9 +1317,7 @@
             let tokenId = null;
 
             // Iterate through the logs to find the Transfer event
-            if (receipt.events && receipt.events.Transfer && receipt.events.Transfer.returnValues) {
-                tokenId = receipt.events.Transfer.returnValues.tokenId;
-            }
+            receipt.events.Transfer && receipt.events.Transfer.returnValues && (tokenId = receipt.events.Transfer.returnValues.tokenId);
 
             if (!tokenId) {
                 // If Transfer event is not found in receipt, alert the user
@@ -1472,102 +1440,6 @@
 
                 svg.appendChild(path);
             }
-
-            // Serialize the SVG to a string
-            const serializer = new XMLSerializer();
-            const svgString = serializer.serializeToString(svg);
-
-            // Encode the SVG string to Base64
-            const svgBase64 = btoa(unescape(encodeURIComponent(svgString)));
-
-            // Create the Data URI
-            const svgDataURI = `data:image/svg+xml;base64,${svgBase64}`;
-
-            return svgDataURI; // Return the Data URI for further use
-        }
-
-        // Function to upload metadata to IPFS via backend server
-        async function uploadMetadataToIPFS(metadataBlob) {
-            const formData = new FormData();
-            formData.append('file', metadataBlob, `metadata_${Date.now()}.json`);
-
-            try {
-                const response = await fetch('http://localhost:3000/upload', { // Update with your backend URL
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to upload metadata to IPFS.');
-                }
-
-                const data = await response.json();
-                return data.IpfsHash;
-            } catch (error) {
-                console.error('Error uploading metadata to IPFS:', error);
-                throw error;
-            }
-        }
-
-        // Function to register the hashed document on the blockchain
-        async function registerHashOnBlockchain() {
-            if (!web3 || !account) {
-                alert('Please connect your wallet first.');
-                return;
-            }
-
-            if (!hashHex) {
-                alert('Please hash a media file first.');
-                return;
-            }
-
-            const mediaHash = hashHex;
-
-            // Generate the spiral SVG Data URI
-            const svgDataURI = generateSpiral(mediaHash.slice(2)); // Remove '0x' prefix
-
-            // Create the JSON metadata
-            const metadata = {
-                name: `MediaSecureNFT #${Date.now()}`, // Unique name, e.g., based on timestamp
-                description: "An NFT representing a secure media file with a unique spiral fingerprint.",
-                image: svgDataURI // Embed the spiral SVG directly
-            };
-
-            // Convert metadata to Blob
-            const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
-
-            try {
-                // Fetch the current fee from the contract
-                const feeInWei = await contract.methods.MINT_FEE().call();
-                console.log('Fee in Wei:', feeInWei);
-
-                // Show the loading overlay
-                document.getElementById('loadingOverlay').style.display = 'flex';
-
-                // Upload the metadata JSON to your backend server
-                const ipfsHash = await uploadMetadataToIPFS(metadataBlob);
-
-                if (!ipfsHash) {
-                    throw new Error('Failed to upload metadata to IPFS.');
-                }
-
-                const tokenURI = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
-
-                // Send the transaction to mintNFT with tokenURI
-                const receipt = await contract.methods.mintNFT(mediaHash, tokenURI).send({
-                    from: account,
-                    value: feeInWei, // Use the dynamic fee
-                });
-
-                console.log('Transaction receipt:', receipt);
-                generateReceipt(mediaHash, account, receipt);
-            } catch (error) {
-                console.error('Error registering hash on blockchain:', error);
-                alert('Error registering hash on blockchain. See console for details.');
-            } finally {
-                // Hide the loading overlay
-                document.getElementById('loadingOverlay').style.display = 'none';
-            }
         }
 
         // Function to generate and display the transaction receipt
@@ -1575,9 +1447,7 @@
             let tokenId = null;
 
             // Iterate through the logs to find the Transfer event
-            if (receipt.events && receipt.events.Transfer && receipt.events.Transfer.returnValues) {
-                tokenId = receipt.events.Transfer.returnValues.tokenId;
-            }
+            receipt.events.Transfer && receipt.events.Transfer.returnValues && (tokenId = receipt.events.Transfer.returnValues.tokenId);
 
             if (!tokenId) {
                 // If Transfer event is not found in receipt, alert the user
@@ -1600,6 +1470,144 @@
             document.getElementById('receipt').style.display = 'block';
         }
 
+        // Function to generate the spiral visualization based on the hash
+        function generateSpiral(hash) {
+            const svg = document.getElementById('spiral-svg');
+            svg.innerHTML = ''; // Clear previous spiral
+            const xmlns = "http://www.w3.org/2000/svg";
+            const centerX = svg.clientWidth / 2; // SVG center X
+            const centerY = svg.clientHeight / 2; // SVG center Y
+
+            // Spiral parameters adjusted to keep spiral within the circle
+            const a = 4.5; // Controls the distance between loops
+            const b = 0.12; // Controls the tightness of the spiral
+            const numPoints = hash.length;
+            const angleIncrement = 0.5; // Radians between points
+
+            // Color mapping for hexadecimal characters (0-9, a-f)
+            const digitColors = {
+                '0': '#FF0000', // Red
+                '1': '#FFA500', // Orange
+                '2': '#FFFF00', // Yellow
+                '3': '#008000', // Green
+                '4': '#0000FF', // Blue
+                '5': '#4B0082', // Indigo
+                '6': '#EE82EE', // Violet
+                '7': '#A52A2A', // Brown
+                '8': '#808080', // Gray
+                '9': '#000000', // Black
+                'a': '#00FFFF', // Aqua
+                'b': '#FF00FF', // Fuchsia
+                'c': '#800000', // Maroon
+                'd': '#808000', // Olive
+                'e': '#008080', // Teal
+                'f': '#000080'  // Navy
+            };
+
+            // Arrays to store points for connecting lines
+            const points = [];
+
+            // Iterate over each character in the hash
+            for (let i = 0; i < numPoints; i++) {
+                const char = hash[i].toLowerCase(); // Ensure lowercase for a-f
+                if (!digitColors[char]) continue; // Skip if not a valid hex character
+
+                // Invert theta to change spiral direction to clockwise
+                const theta = -i * angleIncrement;
+                const r = a * Math.exp(b * Math.abs(theta)); // Use absolute value to ensure r is positive
+
+                // Convert polar to cartesian coordinates
+                let x = centerX + r * Math.cos(theta);
+                let y = centerY + r * Math.sin(theta);
+
+                // Ensure the point stays within the circle
+                const maxRadius = (svg.clientWidth / 2) - 20; // 20px padding
+                const currentRadius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                if (currentRadius > maxRadius) {
+                    // Scale down the point proportionally
+                    const scale = maxRadius / currentRadius;
+                    x = centerX + (x - centerX) * scale;
+                    y = centerY + (y - centerY) * scale;
+                }
+
+                // Store the point for connecting lines
+                points.push({ x, y });
+
+                // Create a larger circle for each hex character (increased radius from 5 to 8)
+                const circle = document.createElementNS(xmlns, "circle");
+                circle.setAttribute("cx", x);
+                circle.setAttribute("cy", y);
+                circle.setAttribute("r", 8); // Increased radius
+                circle.setAttribute("fill", digitColors[char]);
+
+                svg.appendChild(circle);
+            }
+
+            // Draw curved connecting lines between points to mimic fingerprint ridges
+            for (let i = 0; i < points.length - 1; i++) {
+                const start = points[i];
+                const end = points[i + 1];
+
+                // Calculate control points for Bezier curves
+                // Adjusting control points to enhance clockwise curvature
+                const controlPoint1 = {
+                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to the right
+                    y: start.y - 20 // Adjust for curvature
+                };
+                const controlPoint2 = {
+                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to the right
+                    y: end.y - 20 // Adjust for curvature
+                };
+
+                // Create a path for the Bezier curve
+                const path = document.createElementNS(xmlns, "path");
+                const d = `M ${start.x} ${start.y} C ${controlPoint1.x} ${controlPoint1.y}, ${controlPoint2.x} ${controlPoint2.y}, ${end.x} ${end.y}`;
+                path.setAttribute("d", d);
+                path.setAttribute("stroke", digitColors[hash[i + 1].toLowerCase()] || '#000000');
+                path.setAttribute("stroke-width", "2");
+                path.setAttribute("fill", "none");
+                path.setAttribute("opacity", "0.6");
+
+                svg.appendChild(path);
+            }
+        }
+
+        // Function to generate and display the transaction receipt
+        function generateReceipt(mediaHash, account, receipt) {
+            let tokenId = null;
+
+            // Iterate through the logs to find the Transfer event
+            receipt.events.Transfer && receipt.events.Transfer.returnValues && (tokenId = receipt.events.Transfer.returnValues.tokenId);
+
+            if (!tokenId) {
+                // If Transfer event is not found in receipt, alert the user
+                alert('Transaction successful, but could not retrieve Token ID.');
+                return;
+            }
+
+            // Construct the Etherscan link for the NFT
+            const etherscanLink = `https://sepolia.etherscan.io/token/${contractAddress}?a=${tokenId}`;
+
+            const timestamp = new Date().toLocaleString();
+            const receiptContent = `
+                <strong>Document Hash:</strong> ${mediaHash}<br>
+                <strong>Registered By:</strong> ${account}<br>
+                <strong>Date and Time:</strong> ${timestamp}<br>
+                <strong>Token ID:</strong> ${tokenId}<br>
+                <strong>View Your NFT:</strong> <a href="${etherscanLink}" target="_blank">Etherscan Link</a>
+            `;
+            document.getElementById('receiptContent').innerHTML = receiptContent;
+            document.getElementById('receipt').style.display = 'block';
+        }
+
+        // Listen for account and network changes handled by Web3Modal's provider
+        // These are already handled within connectWallet via event listeners
+
+        // Optional: Generate a default spiral on page load (if desired)
+        window.onload = function() {
+            // You can set a default hash here if desired
+            // generateSpiral('c17174716f9994d96b20cd21c8b4cde5c137f3a108f493c5e411c0c5a72ad86b');
+        }; 
     </script>
 
 </body>
