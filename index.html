@@ -1019,15 +1019,18 @@
                     }
                 }
             },
-            coinbasewallet: {
-                package: window.CoinbaseWalletSDK.default, // Required
-                options: {
-                    appName: "MediaSecureNFT", // Required
-                    rpc: "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU", // Sepolia via Alchemy
-                    chainId: 11155111, // Sepolia Test Network ID
-                    darkMode: false // Optional. Use dark theme?
-                }
-            }
+           coinbasewallet: {
+    package: window.CoinbaseWalletSDK.default, // Required
+    options: {
+        appName: "MediaSecureNFT", // Required
+        rpc: {
+            11155111: "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU" // Sepolia via Alchemy
+        },
+        chainId: 11155111, // Sepolia Test Network ID
+        darkMode: false // Optional. Use dark theme?
+    }
+}
+
         };
 
         // Initialize Web3Modal
