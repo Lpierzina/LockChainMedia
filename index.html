@@ -25,43 +25,35 @@
             font-family: 'Roboto', sans-serif;
             background-color: var(--lockchain-gray);
             color: var(--text-color);
-            position: relative; /* To position the fingerprint background correctly */
-            overflow-x: hidden; /* Prevent horizontal scroll caused by absolute positioning */
+            position: relative; /* To position the spiral background correctly */
+            overflow: hidden; /* Prevent scrollbars due to absolute positioning */
         }
 
-        /* Fingerprint Background */
-        .fingerprint-background {
+        /* Spiral Fingerprint Background */
+        .spiral-background {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Allow clicks to pass through */
-            z-index: -1; /* Place behind all other content */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0.1; /* Adjust opacity as needed */
+            pointer-events: none; /* Allow interactions with underlying elements */
+            z-index: -2; /* Place behind all other content */
+            overflow: hidden;
         }
 
-        .fingerprint-background svg {
-            width: 80%;
-            height: auto;
-            stroke: var(--lockchain-blue);
+        .spiral-background svg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center the spiral */
+            width: 300px; /* Initial size, will scale */
+            height: 300px;
+            stroke: rgba(14, 122, 254, 0.2); /* Semi-transparent blue */
             stroke-width: 2;
             fill: none;
-            stroke-dasharray: 1000; /* Placeholder, will be updated dynamically */
-            stroke-dashoffset: 1000; /* Start with dash offset equal to dash array */
-            animation: trace 10s linear forwards; /* Adjust duration as needed */
         }
 
-        /* Animation for Tracing the Fingerprint */
-        @keyframes trace {
-            to {
-                stroke-dashoffset: 0;
-            }
-        }
-
+        /* Header Section */
         header {
             background-color: var(--lockchain-blue);
             color: var(--lockchain-white);
@@ -70,7 +62,7 @@
             align-items: center;
             justify-content: space-between;
             position: relative;
-            z-index: 1; /* Ensure header stays above fingerprint */
+            z-index: 1; /* Ensure header stays above spiral */
         }
 
         header .logo {
@@ -89,11 +81,12 @@
             text-decoration: underline;
         }
 
+        /* Main Content */
         main {
             padding: 40px;
             text-align: center;
             position: relative;
-            z-index: 1; /* Ensure main content stays above fingerprint */
+            z-index: 1; /* Ensure main content stays above spiral */
         }
 
         .intro-section {
@@ -128,7 +121,7 @@
             padding-left: 20px;
         }
 
-        /* New Flex Container for Spiral and Color Mapping */
+        /* Flex Container for Spiral and Color Mapping */
         .spiral-and-color {
             display: flex;
             justify-content: center;
@@ -177,6 +170,7 @@
             font-size: 16px;
         }
 
+        /* Footer Section */
         footer {
             background-color: var(--lockchain-light-blue);
             color: var(--lockchain-white);
@@ -185,7 +179,7 @@
             position: fixed;
             width: 100%;
             bottom: 0;
-            z-index: 1; /* Ensure footer stays above fingerprint */
+            z-index: 1; /* Ensure footer stays above spiral */
         }
 
         /* Responsive Design */
@@ -326,20 +320,15 @@
 </head>
 <body>
 
-    <!-- Fingerprint Background -->
-    <div class="fingerprint-background">
-        <!-- Simple Fingerprint SVG -->
-        <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
-            <!-- Example Fingerprint Path -->
-            <path id="fingerprint-path" d="
-                M300,50 
-                C350,100 350,200 300,250 
-                C250,300 150,300 100,250 
-                C50,200 50,100 100,50 
-                C150,0 250,0 300,50 
-                Z
-            "/>
-            <!-- You can replace the above path with a more detailed fingerprint SVG path -->
+    <!-- Spiral Fingerprint Background -->
+    <div class="spiral-background">
+        <svg id="spiral-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+            <!-- Spiral Path -->
+            <path id="spiral-path" d="M300,300
+                m0,-150
+                a150,150 0 1,1 0,300
+                a150,150 0 1,1 0,-300" />
+            <!-- Note: Replace the above path with a more intricate spiral if desired -->
         </svg>
     </div>
 
@@ -476,6 +465,7 @@
         let account;
         let hashHex;
         let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
+
         
         
         
