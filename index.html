@@ -50,9 +50,9 @@
             stroke: var(--lockchain-blue);
             stroke-width: 2;
             fill: none;
-            stroke-dasharray: 1000; /* Placeholder, will be updated dynamically */
-            stroke-dashoffset: 1000; /* Start with dash offset equal to dash array */
-            animation: trace 10s linear forwards; /* Adjust duration as needed */
+            stroke-dasharray: 2000; /* Updated for detailed path */
+            stroke-dashoffset: 2000; /* Start with dash offset equal to dash array */
+            animation: trace 15s linear forwards; /* Adjust duration for detailed path */
         }
 
         /* Animation for Tracing the Fingerprint */
@@ -328,18 +328,48 @@
 
     <!-- Fingerprint Background -->
     <div class="fingerprint-background">
-        <!-- Simple Fingerprint SVG -->
+        <!-- Detailed Fingerprint SVG -->
         <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
-            <!-- Example Fingerprint Path -->
+            <!-- Detailed Fingerprint Path -->
             <path id="fingerprint-path" d="
-                M300,50 
-                C350,100 350,200 300,250 
-                C250,300 150,300 100,250 
-                C50,200 50,100 100,50 
-                C150,0 250,0 300,50 
+                M300,150 
+                C320,140 340,160 360,150 
+                C380,140 400,160 420,150 
+                C440,140 460,160 480,150 
+                C500,140 520,160 540,150 
+                C560,140 580,160 600,150 
+                C580,180 560,200 540,220 
+                C520,240 500,260 480,280 
+                C460,300 440,320 420,340 
+                C400,360 380,380 360,400 
+                C340,420 320,440 300,460 
+                C280,440 260,420 240,400 
+                C220,380 200,360 180,340 
+                C160,320 140,300 120,280 
+                C100,260 80,240 60,220 
+                C40,200 20,180 0,160 
+                C20,180 40,200 60,220 
+                C80,240 100,260 120,280 
+                C140,300 160,320 180,340 
+                C200,360 220,380 240,400 
+                C260,420 280,440 300,460 
+                C320,440 340,420 360,400 
+                C380,380 400,360 420,340 
+                C440,320 460,300 480,280 
+                C500,260 520,240 540,220 
+                C560,200 580,180 600,160 
+                C580,180 560,200 540,220 
+                C520,240 500,260 480,280 
+                C460,300 440,320 420,340 
+                C400,360 380,380 360,400 
+                C340,420 320,440 300,460 
+                C280,440 260,420 240,400 
+                C220,380 200,360 180,340 
+                C160,320 140,300 120,280 
+                C100,260 80,240 60,220 
+                C40,200 20,180 0,160 
                 Z
             "/>
-            <!-- You can replace the above path with a more detailed fingerprint SVG path -->
         </svg>
     </div>
 
@@ -476,6 +506,7 @@
         let account;
         let hashHex;
         let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
+
         
         
         
