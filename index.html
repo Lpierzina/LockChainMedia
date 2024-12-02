@@ -6,10 +6,6 @@
     <title>MediaSecureNFT - LockChain's Media Secure Platform</title>
     <!-- Include Web3.js library -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
-    <!-- Include Web3Modal library -->
-    <script src="https://unpkg.com/web3modal@1.9.8/dist/index.min.js"></script>
-    <!-- Include WalletConnect Provider -->
-    <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
     <!-- Include Coinbase Wallet SDK -->
     <script src="https://unpkg.com/@coinbase/wallet-sdk@3.7.0/dist/coinbase-wallet-sdk.umd.min.js"></script>
     <!-- Include Google Fonts -->
@@ -421,9 +417,8 @@
         let contract;
         let account;
         let hashHex;
-        let web3Modal;
         let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
-
+        
          // Contract ABI (Replace with your actual complete ABI)
         const contractABI = [
             {
@@ -1009,35 +1004,17 @@
         // Contract address (Replace with your deployed contract address)
         const contractAddress = '0xc6040a3647441EeFf8086Dcc4239c293dde23B45';
 
-        // Initialize Web3Modal for Coinbase Wallet
-        const providerOptions = {
-            walletconnect: {
-                package: window.WalletConnectProvider.default,
-                options: {
-                    rpc: {
-                        11155111: "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU" // Sepolia via Alchemy
-                    }
-                }
-            },
-           coinbasewallet: {
-    package: window.CoinbaseWalletSDK.default, // Required
-    options: {
-        appName: "MediaSecureNFT", // Required
-        rpc: {
-            11155111: "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU" // Sepolia via Alchemy
-        },
-        chainId: 11155111, // Sepolia Test Network ID
-        darkMode: false // Optional. Use dark theme?
-    }
-}
-
-        };
-
-        // Initialize Web3Modal
-        web3Modal = new window.Web3Modal.default({
-            cacheProvider: false, // Prevents automatic reconnections
-            providerOptions, // Required
+             // Initialize Coinbase Wallet SDK
+        const CoinbaseWallet = window.CoinbaseWalletSDK.default;
+        const coinbaseWallet = new CoinbaseWallet({
+            appName: "MediaSecureNFT",
+            appLogoUrl: "https://your-logo-url.com/logo.png", // Optional: Replace with your app logo URL
+            darkMode: false, // Optional: true for dark theme
         });
+
+        // Sepolia RPC URL (Replace with your actual RPC URL if different)
+        const COINBASE_RPC_URL = "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU"; // Replace with your Alchemy API key
+        const COINBASE_CHAIN_ID = 11155111; // Sepolia Test Network ID
 
         // Event listeners for wallet buttons
         document.getElementById('connectMetaMaskButton').addEventListener('click', connectMetaMask);
@@ -1080,16 +1057,19 @@
             }
         }
 
-        // Function to connect Coinbase Wallet using Web3Modal
+        // Function to connect Coinbase Wallet using Coinbase Wallet SDK
         async function connectCoinbaseWallet() {
             try {
                 console.log('Connecting to Coinbase Wallet...');
-                const instance = await web3Modal.connect();
-                selectedProvider = instance;
+                const provider = coinbaseWallet.makeWeb3Provider(COINBASE_RPC_URL, COINBASE_CHAIN_ID);
 
-                web3 = new Web3(instance);
+                // Enable session (triggers QR Code modal)
+                await provider.enable();
+
+                web3 = new Web3(provider);
                 const accounts = await web3.eth.getAccounts();
                 account = accounts[0];
+                selectedProvider = provider;
                 document.getElementById('walletAddress').innerText = 'Connected: ' + account;
                 contract = new web3.eth.Contract(contractABI, contractAddress);
                 console.log('Connected to Coinbase Wallet:', account);
@@ -1107,24 +1087,40 @@
                 await displayCurrentFee();
 
                 // Setup event listeners for Coinbase Wallet
-                setupEventListeners(instance);
+                setupEventListeners(provider);
             } catch (error) {
                 console.error('Error connecting to Coinbase Wallet:', error);
-                alert('Error connecting to Coinbase Wallet. Please check the console for details.');
+                // Provide more specific feedback based on error type
+                if (error.code === 4001) {
+                    alert('Connection to Coinbase Wallet was rejected by the user.');
+                } else if (error.message.includes('unsupported chain')) {
+                    alert('Connected to an unsupported network. Please switch to Sepolia.');
+                } else {
+                    alert('An unexpected error occurred while connecting to Coinbase Wallet.');
+                }
             }
         }
 
         // Function to disconnect wallet
         async function disconnectWallet() {
             try {
-                if (selectedProvider && selectedProvider.close) {
-                    await selectedProvider.close();
+                if (selectedProvider) {
+                    // If Coinbase Wallet provider has a disconnect method, call it
+                    if (selectedProvider.close) {
+                        await selectedProvider.close();
+                    }
+
+                    // If MetaMask provider, no need to explicitly disconnect
+                    // Users can disconnect from MetaMask manually if desired
                 }
-                web3Modal.clearCachedProvider();
+
+                // Reset Web3 and related variables
+                web3 = null;
                 account = null;
                 contract = null;
-                web3 = null;
                 selectedProvider = null;
+
+                // Update UI
                 document.getElementById('walletAddress').innerText = 'Not connected';
                 document.getElementById('disconnectButton').disabled = true;
                 document.getElementById('connectMetaMaskButton').disabled = false;
@@ -1138,6 +1134,7 @@
                 document.getElementById('colorCode').style.display = 'none';
                 // Clear spiral visualization
                 document.getElementById('spiral-svg').innerHTML = '';
+
                 alert('Wallet has been disconnected.');
             } catch (error) {
                 console.error('Error disconnecting wallet:', error);
@@ -1375,7 +1372,7 @@
             try {
                 const chainId = await web3.eth.getChainId();
                 console.log('Connected chain ID:', chainId);
-                if (chainId !== 11155111) { // Sepolia's chain ID
+                if (chainId !== COINBASE_CHAIN_ID) { // Sepolia's chain ID
                     try {
                         await selectedProvider.request({
                             method: 'wallet_switchEthereumChain',
