@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">   
     <title>MediaSecureNFT - LockChain's Media Secure Platform</title>
     <!-- Include Web3.js library -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
@@ -29,36 +29,20 @@
             overflow-x: hidden; /* Prevent horizontal scroll caused by absolute positioning */
         }
 
-        /* Spiral Fingerprint Background */
+        /* Static Transparent Fingerprint Background */
         .fingerprint-background {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            background-image: url('path-to-your-fingerprint-image.png'); /* Replace with your fingerprint image path */
+            background-size: cover; /* Adjusts the image to cover the entire background */
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.1; /* Adjust opacity for desired transparency */
             pointer-events: none; /* Allow clicks to pass through */
             z-index: -1; /* Place behind all other content */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0.1; /* Adjust opacity as needed */
-        }
-
-        .fingerprint-background svg {
-            width: 80%;
-            height: auto;
-            stroke: var(--lockchain-blue);
-            stroke-width: 2;
-            fill: none;
-            /* stroke-dasharray and stroke-dashoffset will be set dynamically via JavaScript */
-            animation: trace 10s linear forwards; /* Adjust duration as needed */
-        }
-
-        /* Animation for Tracing the Spiral */
-        @keyframes trace {
-            to {
-                stroke-dashoffset: 0;
-            }
         }
 
         header {
@@ -127,7 +111,7 @@
             padding-left: 20px;
         }
 
-        /* New Flex Container for Spiral and Color Mapping */
+        /* Flex Container for Spiral and Color Mapping */
         .spiral-and-color {
             display: flex;
             justify-content: center;
@@ -325,18 +309,10 @@
 </head>
 <body>
 
-    <!-- Spiral Fingerprint Background -->
+    <!-- Static Transparent Fingerprint Background -->
     <div class="fingerprint-background">
-        <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
-            <!-- Detailed Spiral Path (Archimedean Spiral) -->
-            <path id="fingerprint-path" d="
-                M300,300
-                m0,-150
-                a150,150 0 0,1 0,300
-                a150,150 0 0,1 0,-300
-            "/>
-            <!-- Note: Replace the above path with a more intricate spiral if desired -->
-        </svg>
+        <!-- No SVG or animated paths here -->
+        <!-- Ensure you have a high-quality, transparent fingerprint image -->
     </div>
 
     <!-- Header Section -->
@@ -472,7 +448,7 @@
         let account;
         let hashHex;
         let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
-               
+      
         
         
          // Contract ABI (Replace with your actual complete ABI)
