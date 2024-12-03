@@ -385,8 +385,8 @@
         <!-- Spiral Visualization and Dynamic Color Mapping -->
         <div class="spiral-and-color">
             <div class="nft-container">
-                <!-- SVG Spiral will be injected here by JavaScript -->
-                <svg id="spiral-svg" width="500" height="500"></svg>
+                <!-- Combined SVG (Image + Spiral) will be injected here by JavaScript -->
+                <svg id="combined-svg" width="500" height="500"></svg>
             </div>
             <!-- Color Code Mapping (Revealed After Hashing) -->
             <div id="colorCode">
@@ -1295,106 +1295,7 @@
             }
         }
 
-        // Function to generate the spiral visualization based on the hash
-        function generateSpiral(hash) {
-            const svg = document.getElementById('spiral-svg');
-            svg.innerHTML = ''; // Clear previous spiral
-            const xmlns = "http://www.w3.org/2000/svg";
-            const centerX = svg.clientWidth / 2; // SVG center X
-            const centerY = svg.clientHeight / 2; // SVG center Y
-
-            // Spiral parameters adjusted to keep spiral within the circle
-            const a = 4.5; // Controls the distance between loops
-            const b = 0.12; // Controls the tightness of the spiral
-            const numPoints = hash.length;
-            const angleIncrement = 0.5; // Radians between points
-
-            // Color mapping for hexadecimal characters (0-9, a-f)
-            const digitColors = {
-                '0': '#FF0000', // Red
-                '1': '#FFA500', // Orange
-                '2': '#FFFF00', // Yellow
-                '3': '#008000', // Green
-                '4': '#0000FF', // Blue
-                '5': '#4B0082', // Indigo
-                '6': '#EE82EE', // Violet
-                '7': '#A52A2A', // Brown
-                '8': '#808080', // Gray
-                '9': '#000000', // Black
-                'a': '#00FFFF', // Aqua
-                'b': '#FF00FF', // Fuchsia
-                'c': '#800000', // Maroon
-                'd': '#808000', // Olive
-                'e': '#008080', // Teal
-                'f': '#000080'  // Navy
-            };
-
-            // Arrays to store points for connecting lines
-            const points = [];
-
-            // Iterate over each character in the hash
-            for (let i = 0; i < numPoints; i++) {
-                const char = hash[i].toLowerCase(); // Ensure lowercase for a-f
-                if (!digitColors[char]) continue; // Skip if not a valid hex character
-
-                // Invert theta to change spiral direction to clockwise
-                const theta = -i * angleIncrement;
-                const r = a * Math.exp(b * Math.abs(theta)); // Use exponential to create tighter spirals
-
-                // Convert polar to cartesian coordinates
-                let x = centerX + r * Math.cos(theta);
-                let y = centerY + r * Math.sin(theta);
-
-                // Ensure the point stays within the circle
-                const maxRadius = (svg.clientWidth / 2) - 20; // 20px padding
-                const currentRadius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-                if (currentRadius > maxRadius) {
-                    // Scale down the point proportionally
-                    const scale = maxRadius / currentRadius;
-                    x = centerX + (x - centerX) * scale;
-                    y = centerY + (y - centerY) * scale;
-                }
-
-                // Store the point for connecting lines
-                points.push({ x, y });
-
-                // Create a larger circle for each hex character (increased radius from 5 to 8)
-                const circle = document.createElementNS(xmlns, "circle");
-                circle.setAttribute("cx", x);
-                circle.setAttribute("cy", y);
-                circle.setAttribute("r", 8); // Increased radius
-                circle.setAttribute("fill", digitColors[char]);
-
-                svg.appendChild(circle);
-            }
-
-            // Draw curved connecting lines between points to mimic spiral ridges
-            for (let i = 0; i < points.length - 1; i++) {
-                const start = points[i];
-                const end = points[i + 1];
-
-                // Calculate control points for Bezier curves
-                const controlPoint1 = {
-                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to enhance curvature
-                    y: start.y - 20
-                };
-                const controlPoint2 = {
-                    x: start.x + (end.x - start.x) / 2 + 10,
-                    y: end.y - 20
-                };
-
-                // Create a path for the Bezier curve
-                const path = document.createElementNS(xmlns, "path");
-                const d = `M ${start.x} ${start.y} C ${controlPoint1.x} ${controlPoint1.y}, ${controlPoint2.x} ${controlPoint2.y}, ${end.x} ${end.y}`;
-                path.setAttribute("d", d);
-                path.setAttribute("stroke", digitColors[hash[i + 1].toLowerCase()] || '#000000');
-                path.setAttribute("stroke-width", "2");
-                path.setAttribute("fill", "none");
-                path.setAttribute("opacity", "0.6");
-
-                svg.appendChild(path);
-            }
-        }
+       
 
         // Function to check if the user is connected to the Sepolia network
         async function checkNetwork() {
@@ -1504,15 +1405,17 @@
             document.getElementById('receipt').style.display = 'block';
         }
 
-        // Function to generate the spiral visualization based on the hash
+       // Function to generate the spiral visualization based on the hash
         function generateSpiral(hash) {
-            const svg = document.getElementById('spiral-svg');
-            svg.innerHTML = ''; // Clear previous spiral
-            const xmlns = "http://www.w3.org/2000/svg";
-            const centerX = svg.clientWidth / 2; // SVG center X
-            const centerY = svg.clientHeight / 2; // SVG center Y
+            const spiralSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            spiralSVG.setAttribute("width", "500");
+            spiralSVG.setAttribute("height", "500");
+            spiralSVG.setAttribute("xmlns", "http://www.w3.org/2000/svg");
 
-            // Spiral parameters adjusted to keep spiral within the circle
+            const centerX = 250; // Half of width
+            const centerY = 250; // Half of height
+
+            // Spiral parameters
             const a = 4.5; // Controls the distance between loops
             const b = 0.12; // Controls the tightness of the spiral
             const numPoints = hash.length;
@@ -1538,7 +1441,6 @@
                 'f': '#000080'  // Navy
             };
 
-            // Arrays to store points for connecting lines
             const points = [];
 
             // Iterate over each character in the hash
@@ -1546,45 +1448,41 @@
                 const char = hash[i].toLowerCase(); // Ensure lowercase for a-f
                 if (!digitColors[char]) continue; // Skip if not a valid hex character
 
-                // Invert theta to change spiral direction to clockwise
-                const theta = -i * angleIncrement;
-                const r = a * Math.exp(b * Math.abs(theta)); // Use exponential to create tighter spirals
+                const theta = -i * angleIncrement; // Negative for clockwise
+                const r = a * Math.exp(b * Math.abs(theta)); // Exponential spiral
 
-                // Convert polar to cartesian coordinates
+                // Polar to Cartesian coordinates
                 let x = centerX + r * Math.cos(theta);
                 let y = centerY + r * Math.sin(theta);
 
-                // Ensure the point stays within the circle
-                const maxRadius = (svg.clientWidth / 2) - 20; // 20px padding
+                // Ensure the spiral stays within the SVG boundaries
+                const maxRadius = 230; // Slightly less than half of SVG size to prevent overflow
                 const currentRadius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
                 if (currentRadius > maxRadius) {
-                    // Scale down the point proportionally
                     const scale = maxRadius / currentRadius;
                     x = centerX + (x - centerX) * scale;
                     y = centerY + (y - centerY) * scale;
                 }
 
-                // Store the point for connecting lines
                 points.push({ x, y });
 
-                // Create a larger circle for each hex character (increased radius from 5 to 8)
-                const circle = document.createElementNS(xmlns, "circle");
+                // Create circle for each point
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", x);
                 circle.setAttribute("cy", y);
-                circle.setAttribute("r", 8); // Increased radius
+                circle.setAttribute("r", 6); // Adjust radius as needed
                 circle.setAttribute("fill", digitColors[char]);
-
-                svg.appendChild(circle);
+                spiralSVG.appendChild(circle);
             }
 
-            // Draw curved connecting lines between points to mimic spiral ridges
+            // Draw connecting lines (Bezier curves)
             for (let i = 0; i < points.length - 1; i++) {
                 const start = points[i];
                 const end = points[i + 1];
 
-                // Calculate control points for Bezier curves
+                // Control points for Bezier curves to enhance curvature
                 const controlPoint1 = {
-                    x: start.x + (end.x - start.x) / 2 + 10, // Shift control points to enhance curvature
+                    x: start.x + (end.x - start.x) / 2 + 10,
                     y: start.y - 20
                 };
                 const controlPoint2 = {
@@ -1592,35 +1490,43 @@
                     y: end.y - 20
                 };
 
-                // Create a path for the Bezier curve
-                const path = document.createElementNS(xmlns, "path");
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 const d = `M ${start.x} ${start.y} C ${controlPoint1.x} ${controlPoint1.y}, ${controlPoint2.x} ${controlPoint2.y}, ${end.x} ${end.y}`;
                 path.setAttribute("d", d);
                 path.setAttribute("stroke", digitColors[hash[i + 1].toLowerCase()] || '#000000');
                 path.setAttribute("stroke-width", "2");
                 path.setAttribute("fill", "none");
                 path.setAttribute("opacity", "0.6");
-
-                svg.appendChild(path);
+                spiralSVG.appendChild(path);
             }
-        }
 
-        // Function to generate and upload SVG to Pinata.cloud
-        async function generateAndUploadSVG() {
-            // Get the uploaded image (if any)
+            // Inject the spiral into the combined SVG container
+            const combinedSVGContainer = document.getElementById('combined-svg');
+            combinedSVGContainer.innerHTML = ''; // Clear previous content
+
+            // Create background image element
             const imagePreview = document.getElementById('imagePreview');
             const imageSrc = imagePreview.src;
 
-            // Get the spiral SVG content
-            const spiralSVG = document.getElementById('spiral-svg').outerHTML;
+            if (imagePreview.style.display !== 'none') { // Ensure an image is loaded
+                const imageElement = document.createElementNS("http://www.w3.org/2000/svg", "image");
+                imageElement.setAttribute("href", imageSrc);
+                imageElement.setAttribute("x", "0");
+                imageElement.setAttribute("y", "0");
+                imageElement.setAttribute("width", "500");
+                imageElement.setAttribute("height", "500");
+                imageElement.setAttribute("opacity", "0.2"); // Adjust opacity as needed
+                combinedSVGContainer.appendChild(imageElement);
+            }
 
-            // Create a new SVG that includes the background image and the spiral
-            const combinedSVG = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500">
-                    <image href="${imageSrc}" x="0" y="0" width="500" height="500" opacity="0.2"/>
-                    ${spiralSVG}
-                </svg>
-            `;
+            // Append the spiral SVG elements on top of the background image
+            combinedSVGContainer.appendChild(spiralSVG);
+        }
+        // Function to generate and upload SVG to Pinata.cloud
+        async function generateAndUploadSVG() {
+            // Get the combined SVG content
+            const combinedSVGContainer = document.getElementById('combined-svg');
+            const combinedSVG = combinedSVGContainer.outerHTML;
 
             // Convert the combined SVG string to a Blob
             const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
@@ -1644,6 +1550,13 @@
                 console.error('Error uploading SVG to Pinata:', error);
                 alert('Failed to upload SVG to Pinata. See console for details.');
             }
+        }
+
+        // Helper function to create FormData for file upload
+        function createFormData(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            return formData;
         }
 
         // Helper function to create FormData for file upload
