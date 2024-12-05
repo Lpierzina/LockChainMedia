@@ -414,11 +414,9 @@
 
         <!-- Connect MetaMask and Coinbase Wallet -->
         <div id="walletSection">
-            <button onclick="connectWallet('metamask')">Connect MetaMask</button>
-            <button onclick="connectWallet('coinbase')">Connect Coinbase Wallet</button>
-            <button onclick="disconnectWallet()">Disconnect Wallet</button>
-            <p id="walletAddress">Not connected</p>
-
+            <button class="btn" onclick="connectWallet('metamask')">Connect MetaMask</button>
+            <button class="btn" onclick="connectWallet('coinbase')">Connect Coinbase Wallet</button>
+            <button class="btn" id="disconnectButton" onclick="disconnectWallet()">Disconnect Wallet</button>
         </div>
 
         <!-- Hash and Register Document -->
