@@ -414,10 +414,11 @@
 
         <!-- Connect MetaMask and Coinbase Wallet -->
         <div id="walletSection">
-            <button class="btn" id="connectMetaMaskButton" onclick="connectMetaMask()">Connect MetaMask</button>
-            <button class="btn" id="connectCoinbaseButton" onclick="connectCoinbaseWallet()">Connect Coinbase Wallet</button>
-            <button class="btn" id="disconnectButton" onclick="disconnectWallet()" disabled>Disconnect Wallet</button>
+            <button onclick="connectWallet('metamask')">Connect MetaMask</button>
+            <button onclick="connectWallet('coinbase')">Connect Coinbase Wallet</button>
+            <button onclick="disconnectWallet()">Disconnect Wallet</button>
             <p id="walletAddress">Not connected</p>
+
         </div>
 
         <!-- Hash and Register Document -->
@@ -459,7 +460,8 @@
         let contract;
         let account;
         let hashHex;
-        let selectedProvider; // Tracks the current provider (MetaMask or Coinbase Wallet)
+        let selectedProvider;
+        let coinbaseWallet;
         
       
         
@@ -1049,81 +1051,36 @@
         // Contract address (Replace with your deployed contract address)
         const contractAddress = '0xc6040a3647441EeFf8086Dcc4239c293dde23B45';
 
-  // Initialize Coinbase Wallet SDK
-        const CoinbaseWalletSDK = window.CoinbaseWalletSDK.default;
-        const coinbaseWallet = new CoinbaseWalletSDK({
-            appName: "MediaSecureNFT",
-            appLogoUrl: "https://your-logo-url.com/logo.png", // Optional: Replace with your app logo URL
-            darkMode: false, // Optional: true for dark theme
-        });
-
-        // Sepolia RPC URL (Replace with your actual RPC URL if different)
-        const COINBASE_RPC_URL = "https://eth-sepolia.alchemyapi.io/v2/DlloOg9phVabjuMziEUxAdV1a2veqPNU"; // Replace with your Alchemy API key
-        const COINBASE_CHAIN_ID = 11155111; // Sepolia Test Network ID
-
-        // Event listeners for wallet buttons
-        document.getElementById('connectMetaMaskButton').addEventListener('click', connectMetaMask);
-        document.getElementById('connectCoinbaseButton').addEventListener('click', connectCoinbaseWallet);
-
-        // Function to connect MetaMask using window.ethereum
-        async function connectMetaMask() {
-            if (window.ethereum && window.ethereum.isMetaMask) {
-                try {
-                    console.log('Connecting to MetaMask...');
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    web3 = new Web3(window.ethereum);
-                    const accounts = await web3.eth.getAccounts();
-                    account = accounts[0];
+  async function connectWallet(wallet) {
+            if (wallet === 'metamask') {
+                if (window.ethereum && window.ethereum.isMetaMask) {
                     selectedProvider = window.ethereum;
-                    document.getElementById('walletAddress').innerText = 'Connected: ' + account;
-                    contract = new web3.eth.Contract(contractABI, contractAddress);
-                    console.log('Connected to MetaMask:', account);
-
-                    // Disable MetaMask and Coinbase connect buttons
-                    document.getElementById('connectMetaMaskButton').disabled = true;
-                    document.getElementById('connectCoinbaseButton').disabled = true;
-                    // Enable Disconnect Button
-                    document.getElementById('disconnectButton').disabled = false;
-
-                    // Check network
-                    await checkNetwork();
-
-                    // Fetch and display the current fee
-                    await displayCurrentFee();
-
-                    // Setup event listeners for MetaMask
-                    setupEventListeners(window.ethereum);
-                } catch (error) {
-                    console.error('Error connecting to MetaMask:', error);
-                    alert('Error connecting to MetaMask. Please check the console for details.');
+                } else {
+                    alert('MetaMask is not installed. Please install MetaMask and try again.');
+                    return;
                 }
+            } else if (wallet === 'coinbase') {
+                // Initialize Coinbase Wallet SDK
+                coinbaseWallet = new CoinbaseWalletSDK({
+                    appName: 'LockChain',
+                    appLogoUrl: 'https://yourapp.com/logo.png',
+                    darkMode: false
+                });
+                const coinbaseProvider = coinbaseWallet.makeWeb3Provider();
+                selectedProvider = coinbaseProvider;
             } else {
-                alert('MetaMask is not installed. Please install MetaMask and try again.');
+                alert('Unsupported wallet selected');
+                return;
             }
-        }
 
-        // Function to connect Coinbase Wallet using Coinbase Wallet SDK
-        async function connectCoinbaseWallet() {
             try {
-                console.log('Connecting to Coinbase Wallet...');
-                const provider = coinbaseWallet.makeWeb3Provider(COINBASE_RPC_URL, COINBASE_CHAIN_ID);
-
-                // Enable session (triggers QR Code modal)
-                await provider.enable();
-
-                web3 = new Web3(provider);
+                web3 = new Web3(selectedProvider);
+                // Request account access if needed
+                await selectedProvider.request({ method: 'eth_requestAccounts' });
                 const accounts = await web3.eth.getAccounts();
                 account = accounts[0];
-                selectedProvider = provider;
                 document.getElementById('walletAddress').innerText = 'Connected: ' + account;
                 contract = new web3.eth.Contract(contractABI, contractAddress);
-                console.log('Connected to Coinbase Wallet:', account);
-
-                // Disable MetaMask and Coinbase connect buttons
-                document.getElementById('connectMetaMaskButton').disabled = true;
-                document.getElementById('connectCoinbaseButton').disabled = true;
-                // Enable Disconnect Button
-                document.getElementById('disconnectButton').disabled = false;
 
                 // Check network
                 await checkNetwork();
@@ -1131,63 +1088,24 @@
                 // Fetch and display the current fee
                 await displayCurrentFee();
 
-                // Setup event listeners for Coinbase Wallet
-                setupEventListeners(provider);
+                console.log('Connected account:', account);
             } catch (error) {
-                console.error('Error connecting to Coinbase Wallet:', error);
-                // Provide more specific feedback based on error type
-                if (error.code === 4001) {
-                    alert('Connection to Coinbase Wallet was rejected by the user.');
-                } else if (error.message.includes('unsupported chain')) {
-                    alert('Connected to an unsupported network. Please switch to Sepolia.');
-                } else {
-                    alert('An unexpected error occurred while connecting to Coinbase Wallet.');
-                }
+                console.error('Error connecting to wallet:', error);
+                alert('Error connecting to wallet.');
             }
         }
 
-        // Function to disconnect wallet
-        async function disconnectWallet() {
-            try {
-                if (selectedProvider) {
-                    // If Coinbase Wallet provider has a disconnect method, call it
-                    if (selectedProvider.close) {
-                        await selectedProvider.close();
-                    }
-
-                    // If MetaMask provider, no need to explicitly disconnect
-                    // Users can disconnect from MetaMask manually if desired
-                }
-
-                // Reset Web3 and related variables
-                web3 = null;
-                account = null;
-                contract = null;
-                selectedProvider = null;
-
-                // Update UI
-                document.getElementById('walletAddress').innerText = 'Not connected';
-                document.getElementById('disconnectButton').disabled = true;
-                document.getElementById('connectMetaMaskButton').disabled = false;
-                document.getElementById('connectCoinbaseButton').disabled = false;
-                document.getElementById('registerButton').disabled = true;
-                document.getElementById('hashOutput').innerText = '';
-                document.getElementById('receipt').style.display = 'none';
-                // Clear any stored hash
-                hashHex = null;
-                // Hide the color code mapping
-                document.getElementById('colorCode').style.display = 'none';
-                // Clear spiral visualization
-                document.getElementById('spiral-svg').innerHTML = '';
-                // Hide image preview
-                document.getElementById('imagePreview').style.display = 'none';
-
-                alert('Wallet has been disconnected.');
-            } catch (error) {
-                console.error('Error disconnecting wallet:', error);
-                alert('Error disconnecting wallet. Please check the console for details.');
+        function disconnectWallet() {
+            if (selectedProvider && selectedProvider.close) {
+                selectedProvider.close();
             }
+            selectedProvider = null;
+            web3 = null;
+            account = null;
+            document.getElementById('walletAddress').innerText = 'Not connected';
+            alert('Wallet disconnected');
         }
+
 
         // Function to fetch and display the current fee
         async function displayCurrentFee() {
@@ -1299,36 +1217,32 @@
 
         // Function to check if the user is connected to the Sepolia network
         async function checkNetwork() {
-            if (!web3) {
-                console.error('Web3 is not initialized.');
-                return;
-            }
-            try {
-                const chainId = await web3.eth.getChainId();
-                console.log('Connected chain ID:', chainId);
-                if (chainId !== COINBASE_CHAIN_ID) { // Sepolia's chain ID
-                    try {
-                        await selectedProvider.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0xaa36a7' }], // 11155111 in hexadecimal
-                        });
-                        console.log('Switched to Sepolia Test Network.');
-                    } catch (switchError) {
-                        // This error code indicates that the chain has not been added to MetaMask
-                        if (switchError.code === 4902) {
-                            alert('Please add the Sepolia network to your wallet.');
-                        } else if (switchError.code === 4001) {
-                            alert('Network switch rejected by user.');
-                        } else {
-                            console.error('Error switching network:', switchError);
-                        }
+            const chainId = await web3.eth.getChainId();
+            if (chainId !== 11155111) { // Sepolia's chain ID
+                try {
+                    await selectedProvider.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0xaa36a7' }], // 11155111 in hexadecimal
+                    });
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        alert('Please add the Sepolia network to your wallet.');
+                    } else {
+                        console.error('Error switching network:', switchError);
                     }
-                } else {
-                    console.log('Connected to Sepolia Test Network.');
                 }
-            } catch (error) {
-                console.error('Error checking network:', error);
             }
+        }
+
+        // Handle account and chain changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', function (accounts) {
+                window.location.reload();
+            });
+
+            window.ethereum.on('chainChanged', function (chainId) {
+                window.location.reload();
+            });
         }
 
         // Function to setup event listeners for account and network changes
