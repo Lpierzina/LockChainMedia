@@ -1365,8 +1365,8 @@ async function connectCoinbaseWallet() {
 				  image: `ipfs://${svgIpfsHash}`, // The uploaded SVG
 				  attributes: [
 					{
-					  trait_type: nftAttributeType,
-					  value: nftAttributeValue
+					  trait_type: "Media Hash",
+					  value: mediaHash
 					}
 				  ]
 				};
@@ -1623,6 +1623,14 @@ async function connectCoinbaseWallet() {
             // Append the spiral SVG elements on top of the background image
             combinedSVGContainer.appendChild(spiralSVG);
         }
+		
+		function createFormData(file) {
+		  const formData = new FormData();
+		  formData.append('file', file);
+		  return formData;
+		}
+		
+		
      async function generateAndUploadSVG() {
     // Get the combined SVG content
     const combinedSVGContainer = document.getElementById('combined-svg');
