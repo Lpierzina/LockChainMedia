@@ -585,19 +585,21 @@
                 ],
                 "stateMutability": "view"
             },
-            {
-                "type": "function",
-                "name": "mintNFT",
-                "inputs": [
-                    {
-                        "name": "mediaHash",
-                        "type": "string",
-                        "internalType": "string"
-                    }
-                ],
-                "outputs": [],
-                "stateMutability": "payable"
-            },
+	{
+		"type": "function",
+		"name": "mintNFT",
+		"inputs": [
+			{
+				"name": "mediaHash",
+				"type": "string",
+				"internalType": "string"
+			},
+			{
+				"name": "tokenURI_",
+				"type": "string",
+				"internalType": "string"
+			}
+		],
             {
                 "type": "function",
                 "name": "name",
