@@ -1312,8 +1312,8 @@ async function connectCoinbaseWallet() {
 		
 		async function uploadMetadataToPinata(metadata) {
 		  const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinJSONToIPFS';
-		  const pinataApiKey = 'YOUR_PINATA_API_KEY';       // Do not expose in production
-		  const pinataSecretApiKey = 'YOUR_PINATA_SECRET_API_KEY'; // Keep secret
+		   const pinataApiKey = 422f7b98080d2b76f1d1;       // YOUR_PINATA_API_KEYDo not expose in production
+		  const pinataSecretApiKey =4985721f8fb43a3206e183f0b9d558b03980e044961e9f7701d36414227f2e1a; // 'YOUR_PINATA_SECRET_API_KEY'Keep secret
 
 		  const response = await fetch(pinataEndpoint, {
 			method: 'POST',
