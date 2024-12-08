@@ -440,7 +440,11 @@
             <button class="btn" id="disconnectButton" onclick="disconnectWallet()" disabled>Disconnect Wallet</button>
             <p id="walletAddress">Not connected</p>
         </div>
-        </div>
+        
+		<h3>Enter NFT Metadata Details</h3>
+		<input type="text" id="nftName" placeholder="NFT Name" /><br><br>
+		<textarea id="nftDescription" placeholder="Enter a description of your NFT"></textarea><br><br>
+	
 
         <!-- Hash and Register Document -->
         <h3>Hash Your Media File</h3>
@@ -585,21 +589,19 @@
                 ],
                 "stateMutability": "view"
             },
-	{
-		"type": "function",
-		"name": "mintNFT",
-		"inputs": [
-			{
-				"name": "mediaHash",
-				"type": "string",
-				"internalType": "string"
+            {
+				"type": "function",
+				"name": "mintNFT",
+				"inputs": [
+					{
+						"name": "mediaHash",
+						"type": "string",
+						"internalType": "string"
+					}
+				],
+				"outputs": [],
+				"stateMutability": "payable"
 			},
-			{
-				"name": "tokenURI_",
-				"type": "string",
-				"internalType": "string"
-			}
-		],
             {
                 "type": "function",
                 "name": "name",
@@ -1302,52 +1304,96 @@ async function connectCoinbaseWallet() {
                 alert('Error hashing the document. See console for details.');
             }
         }
+		
+		async function uploadMetadataToPinata(metadata) {
+		  const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinJSONToIPFS';
+		  const pinataApiKey = 422f7b98080d2b76f1d1;       // YOUR_PINATA_API_KEYDo not expose in production
+		  const pinataSecretApiKey =4985721f8fb43a3206e183f0b9d558b03980e044961e9f7701d36414227f2e1a; // 'YOUR_PINATA_SECRET_API_KEY'Keep secret
+
+		  const response = await fetch(pinataEndpoint, {
+			method: 'POST',
+			headers: {
+			  'pinata_api_key': pinataApiKey,
+			  'pinata_secret_api_key': pinataSecretApiKey,
+			  'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(metadata)
+		  });
+
+		  if (!response.ok) {
+			throw new Error(`Metadata upload failed: ${response.status}`);
+		  }
+
+		  const data = await response.json();
+		  console.log('Metadata uploaded to Pinata:', data);
+		  return data.IpfsHash; // This will be the IPFS hash of your metadata JSON
+		}
+
 
         // Function to register the hashed document on the blockchain
-        async function registerHashOnBlockchain() {
-            if (!web3 || !account || !contract) {
-                alert('Please connect your wallet first.');
-                return;
-            }
+       async function registerHashOnBlockchain() {
+			  if (!web3 || !account || !contract) {
+				alert('Please connect your wallet first.');
+				return;
+			  }
 
-            if (!hashHex) {
-                alert('Please hash a media file first.');
-                return;
-            }
+			  if (!hashHex) {
+				alert('Please hash a media file first.');
+				return;
+			  }
 
-            const mediaHash = hashHex;
+			  // Get user inputs for metadata
+			  const nftName = document.getElementById('nftName').value || "Secured Media NFT";
+			  const nftDescription = document.getElementById('nftDescription').value || "A secure and verifiable piece of media.";
+			  
+			  const mediaHash = hashHex;
 
-            try {
-                // Fetch the current fee from the contract
-                const feeInWei = await contract.methods.MINT_FEE().call();
-                console.log('Fee in Wei:', feeInWei);
+			  try {
+				// First, upload the SVG to Pinata
+				const svgIpfsHash = await generateAndUploadSVG(); 
+				// svgIpfsHash will be returned from your generateAndUploadSVG function
 
-                // Show the loading overlay
-                document.getElementById('loadingOverlay').style.display = 'flex';
+				// Create and upload metadata JSON, including user-provided fields
+				const metadata = {
+				  name: nftName,
+				  description: nftDescription,
+				  image: `ipfs://${svgIpfsHash}`, // The uploaded SVG
+				  attributes: [
+					{
+					  trait_type: "Media Hash",
+					  value: mediaHash
+					}
+				  ]
+				};
 
-                // Send the transaction to mintNFT
-                const receipt = await contract.methods.mintNFT(mediaHash).send({
-                    from: account,
-                    value: feeInWei, // Use the dynamic fee
-                });
+				const metadataIpfsHash = await uploadMetadataToPinata(metadata);
+				const metadataURL = `https://white-payable-angelfish-864.mypinata.cloud/ipfs/${metadataIpfsHash}`;
 
-                console.log('Transaction receipt:', receipt);
-                generateReceipt(mediaHash, account, receipt);
+				const feeInWei = await contract.methods.MINT_FEE().call();
+				console.log('Fee in Wei:', feeInWei);
 
-                // After successful transaction, generate SVG and upload to Pinata
-                await generateAndUploadSVG();
-            } catch (error) {
-                console.error('Error registering hash on blockchain:', error);
-                alert('Error registering hash on blockchain. See console for details.');
-            } finally {
-                // Hide the loading overlay
-                document.getElementById('loadingOverlay').style.display = 'none';
-            }
-        }
+				document.getElementById('loadingOverlay').style.display = 'flex';
 
-       
+				const receipt = await contract.methods.mintNFT(mediaHash, metadataURL).send({
+				  from: account,
+				  value: feeInWei
+				});
 
-       // Function to check if the user is connected to the Sepolia network
+				console.log('Transaction receipt:', receipt);
+				generateReceipt(mediaHash, account, receipt);
+
+			  } catch (error) {
+				console.error('Error registering hash on blockchain:', error);
+				alert('Error registering hash on blockchain. See console for details.');
+			  } finally {
+				document.getElementById('loadingOverlay').style.display = 'none';
+			  }
+			}
+
+
+
+
+				   // Function to check if the user is connected to the Sepolia network
         async function checkNetwork() {
             if (!web3) {
                 console.error('Web3 is not initialized.');
@@ -1572,64 +1618,59 @@ async function connectCoinbaseWallet() {
             // Append the spiral SVG elements on top of the background image
             combinedSVGContainer.appendChild(spiralSVG);
         }
-        // Function to generate and upload SVG to Pinata.cloud
-        async function generateAndUploadSVG() {
-            // Get the combined SVG content
-            const combinedSVGContainer = document.getElementById('combined-svg');
-            const combinedSVG = combinedSVGContainer.outerHTML;
+		
+		function createFormData(file) {
+		  const formData = new FormData();
+		  formData.append('file', file);
+		  return formData;
+		}
+		
+		
+     async function generateAndUploadSVG() {
+    // Get the combined SVG content
+    const combinedSVGContainer = document.getElementById('combined-svg');
+    const combinedSVG = combinedSVGContainer.outerHTML;
 
-            // Convert the combined SVG string to a Blob
-            const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
-            const svgFile = new File([svgBlob], 'spiral_visualization.svg');
+    // Convert the combined SVG string to a Blob
+    const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
+    const svgFile = new File([svgBlob], 'spiral_visualization.svg');
 
-            // Upload the SVG file to Pinata.cloud via your backend
-            try {
-                const response = await fetch('/upload-to-pinata', { // Replace with your backend endpoint
-                    method: 'POST',
-                    body: createFormData(svgFile)
-                });
+    // Pinata API endpoint for pinning a file
+    const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
 
-                if (!response.ok) {
-                    throw new Error(`Upload failed with status ${response.status}`);
-                }
+    // Your Pinata API Keys (DO NOT expose in production)
+    const pinataApiKey = 'YOUR_PINATA_API_KEY';
+    const pinataSecretApiKey = 'YOUR_PINATA_SECRET_API_KEY';
 
-                const data = await response.json();
-                console.log('Uploaded to Pinata:', data);
-                alert('SVG successfully uploaded to IPFS via Pinata!');
-            } catch (error) {
-                console.error('Error uploading SVG to Pinata:', error);
-                alert('Failed to upload SVG to Pinata. See console for details.');
-            }
-        }
+    try {
+    const response = await fetch(pinataEndpoint, {
+      method: 'POST',
+      headers: {
+        'pinata_api_key': pinataApiKey,
+        'pinata_secret_api_key': pinataSecretApiKey
+      },
+      body: createFormData(svgFile)
+    });
 
-        // Helper function to create FormData for file upload
-        function createFormData(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            return formData;
-        }
+    if (!response.ok) {
+      throw new Error(`Upload failed with status ${response.status}`);
+    }
 
-        // Helper function to create FormData for file upload
-        function createFormData(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            return formData;
-        }
+    const data = await response.json();
+    console.log('Uploaded to Pinata:', data);
 
-        // Function to handle file upload to Pinata.cloud
-        // This function should be implemented on your backend server
-        // For security reasons, API keys should not be exposed on the frontend
-        // Below is an example using Fetch API to send the file to your backend
+    const svgIpfsHash = data.IpfsHash; // Store the hash
+    alert('SVG successfully uploaded to IPFS via Pinata!');
+    console.log('View your file at:', `https://white-payable-angelfish-864.mypinata.cloud/ipfs/${svgIpfsHash}`);
 
-        /*
-            Backend Endpoint (/upload-to-pinata):
-            - Receives the file via POST request
-            - Uses Pinata's API to upload the file
-            - Returns the IPFS hash or URL to the frontend
-        */
+    // Return the IPFS hash so we can use it for metadata
+    return svgIpfsHash;
 
-        // Note: Implement the backend separately as detailed in the Backend Implementation section
-
+  } catch (error) {
+    console.error('Error uploading SVG to Pinata:', error);
+    alert('Failed to upload SVG to Pinata. See console for details.');
+  }
+}
     </script>
 
 </body>
