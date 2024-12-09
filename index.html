@@ -1340,64 +1340,83 @@ async function connectCoinbaseWallet() {
 
 
         // Function to register the hashed document on the blockchain
-       async function registerHashOnBlockchain() {
-			  if (!web3 || !account || !contract) {
-				alert('Please connect your wallet first.');
-				return;
-			  }
+      async function registerHashOnBlockchain() {
+  if (!web3 || !account || !contract) {
+    alert('Please connect your wallet first.');
+    return;
+  }
 
-			  if (!hashHex) {
-				alert('Please hash a media file first.');
-				return;
-			  }
+  if (!hashHex) {
+    alert('Please hash a media file first.');
+    return;
+  }
 
-			  // Get user inputs for metadata
-			  const nftName = document.getElementById('nftName').value || "Secured Media NFT";
-			  const nftDescription = document.getElementById('nftDescription').value || "A secure and verifiable piece of media.";
-			  
-			  const mediaHash = hashHex;
+  // Get user inputs for metadata
+  const nftName = document.getElementById('nftName').value || "Secured Media NFT";
+  const nftDescription = document.getElementById('nftDescription').value || "A secure and verifiable piece of media.";
 
-			  try {
-				// First, upload the SVG to Pinata
-				const svgIpfsHash = await generateAndUploadSVG(); 
-				// svgIpfsHash will be returned from your generateAndUploadSVG function
+  const mediaHash = hashHex;
 
-				// Create and upload metadata JSON, including user-provided fields
-				const metadata = {
-				  name: nftName,
-				  description: nftDescription,
-				  image: `ipfs://${svgIpfsHash}`, // The uploaded SVG
-				  attributes: [
-					{
-					  trait_type: "Media Hash",
-					  value: mediaHash
-					}
-				  ]
-				};
+  try {
+    // Generate the spiral SVG
+    generateSpiral(hashHex.slice(2)); // Remove '0x' prefix
 
-				const metadataIpfsHash = await uploadMetadataToPinata(metadata);
-				const metadataURL = `https://white-payable-angelfish-864.mypinata.cloud/ipfs/${metadataIpfsHash}`;
+    // Convert the spiral SVG to a string
+    const combinedSVGContainer = document.getElementById('combined-svg');
+    const combinedSVG = combinedSVGContainer.outerHTML;
 
-				const feeInWei = await contract.methods.MINT_FEE().call();
-				console.log('Fee in Wei:', feeInWei);
+    // Convert the SVG string to a Blob
+    const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
 
-				document.getElementById('loadingOverlay').style.display = 'flex';
+    // Upload the SVG to Pinata via backend
+    const svgIpfsHash = await uploadSVGToBackend(svgBlob, 'spiral_visualization.svg');
 
-				const receipt = await contract.methods.mintNFT(mediaHash, metadataURL).send({
-				  from: account,
-				  value: feeInWei
-				});
+    if (!svgIpfsHash) {
+      throw new Error('Failed to upload SVG to Pinata.');
+    }
 
-				console.log('Transaction receipt:', receipt);
-				generateReceipt(mediaHash, account, receipt);
+    // Create metadata object
+    const metadata = {
+      name: nftName,
+      description: nftDescription,
+      image: `ipfs://${svgIpfsHash}`, // The uploaded SVG
+      attributes: [
+        {
+          trait_type: "Media Hash",
+          value: mediaHash
+        }
+      ]
+    };
 
-			  } catch (error) {
-				console.error('Error registering hash on blockchain:', error);
-				alert('Error registering hash on blockchain. See console for details.');
-			  } finally {
-				document.getElementById('loadingOverlay').style.display = 'none';
-			  }
-			}
+    // Upload metadata to Pinata via backend
+    const metadataIpfsHash = await uploadMetadataToBackend(metadata);
+
+    if (!metadataIpfsHash) {
+      throw new Error('Failed to upload metadata to Pinata.');
+    }
+
+    const metadataURL = `https://gateway.pinata.cloud/ipfs/${metadataIpfsHash}`;
+
+    const feeInWei = await contract.methods.MINT_FEE().call();
+    console.log('Fee in Wei:', feeInWei);
+
+    document.getElementById('loadingOverlay').style.display = 'flex';
+
+    const receipt = await contract.methods.mintNFT(mediaHash, metadataURL).send({
+      from: account,
+      value: feeInWei
+    });
+
+    console.log('Transaction receipt:', receipt);
+    generateReceipt(mediaHash, account, receipt);
+
+  } catch (error) {
+    console.error('Error registering hash on blockchain:', error);
+    alert('Error registering hash on blockchain. See console for details.');
+  } finally {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }
+}
 
 
 
