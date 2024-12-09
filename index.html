@@ -589,7 +589,7 @@
                 ],
                 "stateMutability": "view"
             },
-           {"type":"function",
+            {"type":"function",
 			 "name":"mintNFT",
 			 "inputs":[
 				 
@@ -610,21 +610,7 @@
 					 "internalType":"uint256"
 				 }
 			 ],
-			 "stateMutability":"payable"
-	   },
-            {
-                "type": "function",
-                "name": "name",
-                "inputs": [],
-                "outputs": [
-                    {
-                        "name": "",
-                        "type": "string",
-                        "internalType": "string"
-                    }
-                ],
-                "stateMutability": "view"
-            },
+			 "stateMutability":"payable"},
             {
                 "type": "function",
                 "name": "name",
@@ -1330,8 +1316,8 @@ async function connectCoinbaseWallet() {
 		
 		async function uploadMetadataToPinata(metadata) {
 		  const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinJSONToIPFS';
-		  const pinataApiKey = 422f7b98080d2b76f1d1;       // YOUR_PINATA_API_KEYDo not expose in production
-		  const pinataSecretApiKey =4985721f8fb43a3206e183f0b9d558b03980e044961e9f7701d36414227f2e1a; // 'YOUR_PINATA_SECRET_API_KEY'Keep secret
+		  const pinataApiKey = 'PINATA_API_KEY'; // Replace with actual key
+  		  const pinataSecretApiKey = 'PINATA_SECRET_API_KEY'; // Replace with actual key
 
 		  const response = await fetch(pinataEndpoint, {
 			method: 'POST',
@@ -1694,6 +1680,54 @@ async function connectCoinbaseWallet() {
     alert('Failed to upload SVG to Pinata. See console for details.');
   }
 }
+		async function uploadMetadataToBackend(metadata) {
+  try {
+    const response = await fetch('https://https://git.heroku.com/securenftpinata.git.com/upload-metadata', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(metadata),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Metadata upload failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Metadata uploaded via backend:', data);
+    return data.ipfsHash;
+  } catch (error) {
+    console.error('Error uploading metadata via backend:', error);
+    alert('Failed to upload metadata. See console for details.');
+  }
+}
+		
+		// Function to upload SVG via backend
+async function uploadSVGToBackend(svgBlob, fileName) {
+  try {
+    const formData = new FormData();
+    formData.append('file', svgBlob, fileName);
+
+    const response = await fetch('https://https://git.heroku.com/securenftpinata.git.com/upload-svg', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`SVG upload failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('SVG uploaded via backend:', data);
+    return data.ipfsHash;
+  } catch (error) {
+    console.error('Error uploading SVG via backend:', error);
+    alert('Failed to upload SVG. See console for details.');
+  }
+}
+
+		
     </script>
 
 </body>
