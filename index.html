@@ -1682,7 +1682,7 @@ async function connectCoinbaseWallet() {
 }
 		async function uploadMetadataToBackend(metadata) {
   try {
-    const response = await fetch('https://https://git.heroku.com/securenftpinata.git.com/upload-metadata', {
+    const response = await fetch('https://your-backend-url.com/upload-metadata', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1700,30 +1700,6 @@ async function connectCoinbaseWallet() {
   } catch (error) {
     console.error('Error uploading metadata via backend:', error);
     alert('Failed to upload metadata. See console for details.');
-  }
-}
-		
-		// Function to upload SVG via backend
-async function uploadSVGToBackend(svgBlob, fileName) {
-  try {
-    const formData = new FormData();
-    formData.append('file', svgBlob, fileName);
-
-    const response = await fetch('https://your-backend-url.com/upload-svg', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`SVG upload failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('SVG uploaded via backend:', data);
-    return data.ipfsHash;
-  } catch (error) {
-    console.error('Error uploading SVG via backend:', error);
-    alert('Failed to upload SVG. See console for details.');
   }
 }
 
