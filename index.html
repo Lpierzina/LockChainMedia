@@ -1314,135 +1314,95 @@ async function connectCoinbaseWallet() {
             }
         }
 		
-		// Function to upload metadata via backend
-        async function uploadMetadataToBackend(metadata) {
-            try {
-                const response = await fetch('https://lockchainmedia-3f52c61fd584.herokuapp.com/upload-metadata', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(metadata),
-                });
+		async function uploadMetadataToPinata(metadata) {
+		  const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinJSONToIPFS';
+		  const pinataApiKey = 'PINATA_API_KEY'; // Replace with actual key
+  		  const pinataSecretApiKey = 'PINATA_SECRET_API_KEY'; // Replace with actual key
 
-                if (!response.ok) {
-                    throw new Error(`Metadata upload failed: ${response.status}`);
-                }
+		  const response = await fetch(pinataEndpoint, {
+			method: 'POST',
+			headers: {
+			  'pinata_api_key': pinataApiKey,
+			  'pinata_secret_api_key': pinataSecretApiKey,
+			  'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(metadata)
+		  });
 
-                const data = await response.json();
-                console.log('Metadata uploaded via backend:', data);
-                return data.ipfsHash;
-            } catch (error) {
-                console.error('Error uploading metadata via backend:', error);
-                alert('Failed to upload metadata. See console for details.');
-            }
-        }
+		  if (!response.ok) {
+			throw new Error(`Metadata upload failed: ${response.status}`);
+		  }
 
-        // Function to upload SVG via backend
-        async function uploadSVGToBackend(svgBlob, fileName) {
-            try {
-                const formData = new FormData();
-                formData.append('file', svgBlob, fileName);
+		  const data = await response.json();
+		  console.log('Metadata uploaded to Pinata:', data);
+		  return data.IpfsHash; // This will be the IPFS hash of your metadata JSON
+		}
 
-                const response = await fetch('https://lockchainmedia-3f52c61fd584.herokuapp.com/upload-svg', {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                if (!response.ok) {
-                    throw new Error(`SVG upload failed: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('SVG uploaded via backend:', data);
-                return data.ipfsHash;
-            } catch (error) {
-                console.error('Error uploading SVG via backend:', error);
-                alert('Failed to upload SVG. See console for details.');
-            }
-        }
 
         // Function to register the hashed document on the blockchain
-        async function registerHashOnBlockchain() {
-            if (!web3 || !account || !contract) {
-                alert('Please connect your wallet first.');
-                return;
-            }
+       async function registerHashOnBlockchain() {
+			  if (!web3 || !account || !contract) {
+				alert('Please connect your wallet first.');
+				return;
+			  }
 
-            if (!hashHex) {
-                alert('Please hash a media file first.');
-                return;
-            }
+			  if (!hashHex) {
+				alert('Please hash a media file first.');
+				return;
+			  }
 
-            // Get user inputs for metadata
-            const nftName = document.getElementById('nftName').value || "Secured Media NFT";
-            const nftDescription = document.getElementById('nftDescription').value || "A secure and verifiable piece of media.";
+			  // Get user inputs for metadata
+			  const nftName = document.getElementById('nftName').value || "Secured Media NFT";
+			  const nftDescription = document.getElementById('nftDescription').value || "A secure and verifiable piece of media.";
+			  
+			  const mediaHash = hashHex;
 
-            const mediaHash = hashHex;
+			  try {
+				// First, upload the SVG to Pinata
+				const svgIpfsHash = await generateAndUploadSVG(); 
+				// svgIpfsHash will be returned from your generateAndUploadSVG function
 
-            try {
-                // Generate the spiral SVG
-                generateSpiral(hashHex.slice(2)); // Remove '0x' prefix
+				// Create and upload metadata JSON, including user-provided fields
+				const metadata = {
+				  name: nftName,
+				  description: nftDescription,
+				  image: `ipfs://${svgIpfsHash}`, // The uploaded SVG
+				  attributes: [
+					{
+					  trait_type: "Media Hash",
+					  value: mediaHash
+					}
+				  ]
+				};
 
-                // Convert the spiral SVG to a Blob
-                const combinedSVGContainer = document.getElementById('combined-svg');
-                const combinedSVG = combinedSVGContainer.outerHTML;
+				const metadataIpfsHash = await uploadMetadataToPinata(metadata);
+				const metadataURL = `https://white-payable-angelfish-864.mypinata.cloud/ipfs/${metadataIpfsHash}`;
 
-                // Convert the SVG string to a Blob
-                const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
-                const svgFile = new File([svgBlob], 'spiral_visualization.svg');
+				const feeInWei = await contract.methods.MINT_FEE().call();
+				console.log('Fee in Wei:', feeInWei);
 
-                // Upload the SVG to the backend
-                const svgIpfsHash = await uploadSVGToBackend(svgBlob, 'spiral_visualization.svg');
+				document.getElementById('loadingOverlay').style.display = 'flex';
 
-                if (!svgIpfsHash) {
-                    throw new Error('Failed to upload SVG to backend.');
-                }
+				const receipt = await contract.methods.mintNFT(mediaHash, metadataURL).send({
+				  from: account,
+				  value: feeInWei
+				});
 
-                // Create metadata object
-                const metadata = {
-                    name: nftName,
-                    description: nftDescription,
-                    image: `ipfs://${svgIpfsHash}`, // The uploaded SVG
-                    attributes: [
-                        {
-                            trait_type: "Media Hash",
-                            value: mediaHash
-                        }
-                    ]
-                };
+				console.log('Transaction receipt:', receipt);
+				generateReceipt(mediaHash, account, receipt);
 
-                // Upload metadata to the backend
-                const metadataIpfsHash = await uploadMetadataToBackend(metadata);
+			  } catch (error) {
+				console.error('Error registering hash on blockchain:', error);
+				alert('Error registering hash on blockchain. See console for details.');
+			  } finally {
+				document.getElementById('loadingOverlay').style.display = 'none';
+			  }
+			}
 
-                if (!metadataIpfsHash) {
-                    throw new Error('Failed to upload metadata to Pinata.');
-                }
 
-                const metadataURL = `https://gateway.pinata.cloud/ipfs/${metadataIpfsHash}`;
 
-                const feeInWei = await contract.methods.MINT_FEE().call();
-                console.log('Fee in Wei:', feeInWei);
 
-                document.getElementById('loadingOverlay').style.display = 'flex';
-
-                const receipt = await contract.methods.mintNFT(mediaHash, metadataURL).send({
-                    from: account,
-                    value: feeInWei
-                });
-
-                console.log('Transaction receipt:', receipt);
-                generateReceipt(mediaHash, account, receipt);
-
-            } catch (error) {
-                console.error('Error registering hash on blockchain:', error);
-                alert('Error registering hash on blockchain. See console for details.');
-            } finally {
-                document.getElementById('loadingOverlay').style.display = 'none';
-            }
-        }
-
-        // Function to check if the user is connected to the Sepolia network
+				   // Function to check if the user is connected to the Sepolia network
         async function checkNetwork() {
             if (!web3) {
                 console.error('Web3 is not initialized.');
@@ -1451,7 +1411,7 @@ async function connectCoinbaseWallet() {
             try {
                 const chainId = await web3.eth.getChainId();
                 console.log('Connected chain ID:', chainId);
-                if (chainId !== 11155111) { // Sepolia's chain ID
+                if (chainId !== COINBASE_CHAIN_ID) { // Sepolia's chain ID
                     try {
                         await selectedProvider.request({
                             method: 'wallet_switchEthereumChain',
@@ -1550,7 +1510,7 @@ async function connectCoinbaseWallet() {
             document.getElementById('receipt').style.display = 'block';
         }
 
-        // Function to generate the spiral visualization based on the hash
+       // Function to generate the spiral visualization based on the hash
         function generateSpiral(hash) {
             const spiralSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             spiralSVG.setAttribute("width", "500");
@@ -1667,312 +1627,107 @@ async function connectCoinbaseWallet() {
             // Append the spiral SVG elements on top of the background image
             combinedSVGContainer.appendChild(spiralSVG);
         }
+		
+		function createFormData(file) {
+		  const formData = new FormData();
+		  formData.append('file', file);
+		  return formData;
+		}
+		
+		
+     async function generateAndUploadSVG() {
+    // Get the combined SVG content
+    const combinedSVGContainer = document.getElementById('combined-svg');
+    const combinedSVG = combinedSVGContainer.outerHTML;
 
-        // Function to generate and upload SVG via backend
-        async function generateAndUploadSVG() {
-            // Get the combined SVG content
-            const combinedSVGContainer = document.getElementById('combined-svg');
-            const combinedSVG = combinedSVGContainer.outerHTML;
+    // Convert the combined SVG string to a Blob
+    const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
+    const svgFile = new File([svgBlob], 'spiral_visualization.svg');
 
-            // Convert the combined SVG string to a Blob
-            const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
-            const svgFile = new File([svgBlob], 'spiral_visualization.svg');
+    // Pinata API endpoint for pinning a file
+    const pinataEndpoint = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
 
-            // Upload the SVG to the backend
-            const svgIpfsHash = await uploadSVGToBackend(svgBlob, 'spiral_visualization.svg');
+    // Your Pinata API Keys (DO NOT expose in production)
+    const pinataApiKey = 'YOUR_PINATA_API_KEY';
+    const pinataSecretApiKey = 'YOUR_PINATA_SECRET_API_KEY';
 
-            if (!svgIpfsHash) {
-                alert('Failed to upload SVG to backend.');
-                return;
-            }
+    try {
+    const response = await fetch(pinataEndpoint, {
+      method: 'POST',
+      headers: {
+        'pinata_api_key': pinataApiKey,
+        'pinata_secret_api_key': pinataSecretApiKey
+      },
+      body: createFormData(svgFile)
+    });
 
-            alert('SVG successfully uploaded to IPFS via backend!');
-            console.log('View your file at:', `https://gateway.pinata.cloud/ipfs/${svgIpfsHash}`);
+    if (!response.ok) {
+      throw new Error(`Upload failed with status ${response.status}`);
+    }
 
-            // Return the IPFS hash so we can use it for metadata
-            return svgIpfsHash;
-        }
+    const data = await response.json();
+    console.log('Uploaded to Pinata:', data);
 
-        // Function to register the hashed document on the blockchain
-        async function registerHashOnBlockchain() {
-            if (!web3 || !account || !contract) {
-                alert('Please connect your wallet first.');
-                return;
-            }
+    const svgIpfsHash = data.IpfsHash; // Store the hash
+    alert('SVG successfully uploaded to IPFS via Pinata!');
+    console.log('View your file at:', `https://white-payable-angelfish-864.mypinata.cloud/ipfs/${svgIpfsHash}`);
 
-            if (!hashHex) {
-                alert('Please hash a media file first.');
-                return;
-            }
+    // Return the IPFS hash so we can use it for metadata
+    return svgIpfsHash;
 
-            // Get user inputs for metadata
-            const nftName = document.getElementById('nftName').value || "Secured Media NFT";
-            const nftDescription = document.getElementById('nftDescription').value || "A secure and verifiable piece of media.";
+  } catch (error) {
+    console.error('Error uploading SVG to Pinata:', error);
+    alert('Failed to upload SVG to Pinata. See console for details.');
+  }
+}
+		async function uploadMetadataToBackend(metadata) {
+  try {
+    const response = await fetch('https://https://git.heroku.com/securenftpinata.git.com/upload-metadata', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(metadata),
+    });
 
-            const mediaHash = hashHex;
+    if (!response.ok) {
+      throw new Error(`Metadata upload failed: ${response.status}`);
+    }
 
-            try {
-                // Generate the spiral SVG
-                generateSpiral(hashHex.slice(2)); // Remove '0x' prefix
+    const data = await response.json();
+    console.log('Metadata uploaded via backend:', data);
+    return data.ipfsHash;
+  } catch (error) {
+    console.error('Error uploading metadata via backend:', error);
+    alert('Failed to upload metadata. See console for details.');
+  }
+}
+		
+		// Function to upload SVG via backend
+async function uploadSVGToBackend(svgBlob, fileName) {
+  try {
+    const formData = new FormData();
+    formData.append('file', svgBlob, fileName);
 
-                // Convert the spiral SVG to a Blob
-                const combinedSVGContainer = document.getElementById('combined-svg');
-                const combinedSVG = combinedSVGContainer.outerHTML;
+    const response = await fetch('https://your-backend-url.com/upload-svg', {
+      method: 'POST',
+      body: formData,
+    });
 
-                // Convert the SVG string to a Blob
-                const svgBlob = new Blob([combinedSVG], { type: 'image/svg+xml' });
-                const svgFile = new File([svgBlob], 'spiral_visualization.svg');
+    if (!response.ok) {
+      throw new Error(`SVG upload failed: ${response.status}`);
+    }
 
-                // Upload the SVG to the backend
-                const svgIpfsHash = await uploadSVGToBackend(svgBlob, 'spiral_visualization.svg');
+    const data = await response.json();
+    console.log('SVG uploaded via backend:', data);
+    return data.ipfsHash;
+  } catch (error) {
+    console.error('Error uploading SVG via backend:', error);
+    alert('Failed to upload SVG. See console for details.');
+  }
+}
 
-                if (!svgIpfsHash) {
-                    throw new Error('Failed to upload SVG to backend.');
-                }
-
-                // Create metadata object
-                const metadata = {
-                    name: nftName,
-                    description: nftDescription,
-                    image: `ipfs://${svgIpfsHash}`, // The uploaded SVG
-                    attributes: [
-                        {
-                            trait_type: "Media Hash",
-                            value: mediaHash
-                        }
-                    ]
-                };
-
-                // Upload metadata to the backend
-                const metadataIpfsHash = await uploadMetadataToBackend(metadata);
-
-                if (!metadataIpfsHash) {
-                    throw new Error('Failed to upload metadata to Pinata.');
-                }
-
-                const metadataURL = `https://gateway.pinata.cloud/ipfs/${metadataIpfsHash}`;
-
-                const feeInWei = await contract.methods.MINT_FEE().call();
-                console.log('Fee in Wei:', feeInWei);
-
-                document.getElementById('loadingOverlay').style.display = 'flex';
-
-                const receipt = await contract.methods.mintNFT(mediaHash, metadataURL).send({
-                    from: account,
-                    value: feeInWei
-                });
-
-                console.log('Transaction receipt:', receipt);
-                generateReceipt(mediaHash, account, receipt);
-
-            } catch (error) {
-                console.error('Error registering hash on blockchain:', error);
-                alert('Error registering hash on blockchain. See console for details.');
-            } finally {
-                document.getElementById('loadingOverlay').style.display = 'none';
-            }
-        }
-
-        // Function to generate and display the transaction receipt
-        function generateReceipt(mediaHash, account, receipt) {
-            let tokenId = null;
-
-            // Iterate through the logs to find the Transfer event
-            if (receipt.events && receipt.events.Transfer && receipt.events.Transfer.returnValues) {
-                tokenId = receipt.events.Transfer.returnValues.tokenId;
-            }
-
-            if (!tokenId) {
-                // If Transfer event is not found in receipt, alert the user
-                alert('Transaction successful, but could not retrieve Token ID.');
-                return;
-            }
-
-            // Construct the Etherscan link for the NFT
-            const etherscanLink = `https://sepolia.etherscan.io/token/${contractAddress}?a=${tokenId}`;
-
-            const timestamp = new Date().toLocaleString();
-            const receiptContent = `
-                <strong>Document Hash:</strong> ${mediaHash}<br>
-                <strong>Registered By:</strong> ${account}<br>
-                <strong>Date and Time:</strong> ${timestamp}<br>
-                <strong>Token ID:</strong> ${tokenId}<br>
-                <strong>View Your NFT:</strong> <a href="${etherscanLink}" target="_blank">Etherscan Link</a>
-            `;
-            document.getElementById('receiptContent').innerHTML = receiptContent;
-            document.getElementById('receipt').style.display = 'block';
-        }
-
-        // Function to generate the spiral visualization based on the hash
-        function generateSpiral(hash) {
-            const spiralSVG = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            spiralSVG.setAttribute("width", "500");
-            spiralSVG.setAttribute("height", "500");
-            spiralSVG.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-
-            const centerX = 250; // Half of width
-            const centerY = 250; // Half of height
-
-            // Spiral parameters
-            const a = 4.5; // Controls the distance between loops
-            const b = 0.12; // Controls the tightness of the spiral
-            const numPoints = hash.length;
-            const angleIncrement = 0.5; // Radians between points
-
-            // Color mapping for hexadecimal characters (0-9, a-f)
-            const digitColors = {
-                '0': '#FF0000', // Red
-                '1': '#FFA500', // Orange
-                '2': '#FFFF00', // Yellow
-                '3': '#008000', // Green
-                '4': '#0000FF', // Blue
-                '5': '#4B0082', // Indigo
-                '6': '#EE82EE', // Violet
-                '7': '#A52A2A', // Brown
-                '8': '#808080', // Gray
-                '9': '#000000', // Black
-                'a': '#00FFFF', // Aqua
-                'b': '#FF00FF', // Fuchsia
-                'c': '#800000', // Maroon
-                'd': '#808000', // Olive
-                'e': '#008080', // Teal
-                'f': '#000080'  // Navy
-            };
-
-            const points = [];
-
-            // Iterate over each character in the hash
-            for (let i = 0; i < numPoints; i++) {
-                const char = hash[i].toLowerCase(); // Ensure lowercase for a-f
-                if (!digitColors[char]) continue; // Skip if not a valid hex character
-
-                const theta = -i * angleIncrement; // Negative for clockwise
-                const r = a * Math.exp(b * Math.abs(theta)); // Exponential spiral
-
-                // Polar to Cartesian coordinates
-                let x = centerX + r * Math.cos(theta);
-                let y = centerY + r * Math.sin(theta);
-
-                // Ensure the spiral stays within the SVG boundaries
-                const maxRadius = 230; // Slightly less than half of SVG size to prevent overflow
-                const currentRadius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-                if (currentRadius > maxRadius) {
-                    const scale = maxRadius / currentRadius;
-                    x = centerX + (x - centerX) * scale;
-                    y = centerY + (y - centerY) * scale;
-                }
-
-                points.push({ x, y });
-
-                // Create circle for each point
-                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                circle.setAttribute("cx", x);
-                circle.setAttribute("cy", y);
-                circle.setAttribute("r", 6); // Adjust radius as needed
-                circle.setAttribute("fill", digitColors[char]);
-                spiralSVG.appendChild(circle);
-            }
-
-            // Draw connecting lines (Bezier curves)
-            for (let i = 0; i < points.length - 1; i++) {
-                const start = points[i];
-                const end = points[i + 1];
-
-                // Control points for Bezier curves to enhance curvature
-                const controlPoint1 = {
-                    x: start.x + (end.x - start.x) / 2 + 10,
-                    y: start.y - 20
-                };
-                const controlPoint2 = {
-                    x: start.x + (end.x - start.x) / 2 + 10,
-                    y: end.y - 20
-                };
-
-                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                const d = `M ${start.x} ${start.y} C ${controlPoint1.x} ${controlPoint1.y}, ${controlPoint2.x} ${controlPoint2.y}, ${end.x} ${end.y}`;
-                path.setAttribute("d", d);
-                path.setAttribute("stroke", digitColors[hash[i + 1].toLowerCase()] || '#000000');
-                path.setAttribute("stroke-width", "2");
-                path.setAttribute("fill", "none");
-                path.setAttribute("opacity", "0.6");
-                spiralSVG.appendChild(path);
-            }
-
-            // Inject the spiral into the combined SVG container
-            const combinedSVGContainer = document.getElementById('combined-svg');
-            combinedSVGContainer.innerHTML = ''; // Clear previous content
-
-            // Create background image element
-            const imagePreview = document.getElementById('imagePreview');
-            const imageSrc = imagePreview.src;
-
-            if (imagePreview.style.display !== 'none') { // Ensure an image is loaded
-                const imageElement = document.createElementNS("http://www.w3.org/2000/svg", "image");
-                imageElement.setAttribute("href", imageSrc);
-                imageElement.setAttribute("x", "0");
-                imageElement.setAttribute("y", "0");
-                imageElement.setAttribute("width", "500");
-                imageElement.setAttribute("height", "500");
-                imageElement.setAttribute("opacity", "0.2"); // Adjust opacity as needed
-                combinedSVGContainer.appendChild(imageElement);
-            }
-
-            // Append the spiral SVG elements on top of the background image
-            combinedSVGContainer.appendChild(spiralSVG);
-        }
-
-        // Function to setup event listeners for account and network changes
-        function setupEventListeners(provider) {
-            if (provider.on) {
-                provider.on('accountsChanged', (accounts) => {
-                    if (accounts.length === 0) {
-                        // Wallet is locked or the user has not connected any accounts
-                        disconnectWallet();
-                    } else {
-                        account = accounts[0];
-                        document.getElementById('walletAddress').innerText = 'Connected: ' + account;
-                    }
-                });
-
-                provider.on('chainChanged', (chainId) => {
-                    // Handle the new chain
-                    console.log('Chain changed to:', chainId);
-                    checkNetwork();
-                });
-
-                provider.on('disconnect', (code, reason) => {
-                    console.log('Disconnected:', code, reason);
-                    disconnectWallet();
-                });
-            }
-        }
-
-        // Listen for account and network changes in MetaMask
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', function (accounts) {
-                if (accounts.length === 0) {
-                    // MetaMask is locked or the user has not connected any accounts
-                    disconnectWallet();
-                } else {
-                    // Reload the page to update the connected account
-                    window.location.reload();
-                }
-            });
-
-            window.ethereum.on('chainChanged', function (chainId) {
-                // Reload the page to switch to the new network
-                window.location.reload();
-            });
-        }
-
-        // Global Error Handlers
-        window.addEventListener('unhandledrejection', function(event) {
-            console.error('Unhandled promise rejection:', event.reason);
-        });
-
-        window.addEventListener('error', function(event) {
-            console.error('Unhandled error:', event.error);
-        });
+		
     </script>
 
 </body>
